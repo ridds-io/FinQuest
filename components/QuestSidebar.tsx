@@ -45,24 +45,9 @@ export const QUEST_DEFINITIONS: SidebarEntry[] = [
 export const INITIAL_TIPS: SidebarEntry[] = [
   { kind: 'tip', id: 'tip-1', text: 'Click on Budgeting City to start your first module.', icon: '💡' },
   { kind: 'tip', id: 'tip-2', text: 'The 50/30/20 rule: 50% needs, 30% wants, 20% savings.', icon: '🎯' },
-  {
-    kind: 'tip',
-    id: 'tip-3',
-    text: 'On ₹15k/month: ₹7,500 for needs, ₹4,500 for wants, ₹3,000 to save.',
-    icon: '🇮🇳',
-  },
-  {
-    kind: 'tip',
-    id: 'tip-4',
-    text: 'Daily ₹50 chai = ₹18,250/year. Small habits add up fast!',
-    icon: '☕',
-  },
-  {
-    kind: 'tip',
-    id: 'tip-5',
-    text: 'Ask the AI Tutor anytime — it will guide, not just tell.',
-    icon: '🤖',
-  },
+  { kind: 'tip', id: 'tip-3', text: 'On ₹15k/month: ₹7,500 for needs, ₹4,500 for wants, ₹3,000 to save.', icon: '🇮🇳' },
+  { kind: 'tip', id: 'tip-4', text: 'Daily ₹50 chai = ₹18,250/year. Small habits add up fast!', icon: '☕' },
+  { kind: 'tip', id: 'tip-5', text: 'Ask the AI Tutor anytime — it will guide, not just tell.', icon: '🤖' },
 ];
 
 export function makeTutorEntry(text: string): SidebarEntry {
@@ -96,58 +81,58 @@ export function QuestSidebar({ entries, questsDone, onAskTutor }: QuestSidebarPr
   }, [tutorEntries.length]);
 
   const quests = entries.filter((e) => e.kind === 'quest') as Extract<SidebarEntry, { kind: 'quest' }>[];
-  const tips = entries.filter((e) => e.kind === 'tip') as Extract<SidebarEntry, { kind: 'tip' }>[];
 
   return (
     <aside className="hidden md:flex w-60 flex-col bg-[rgba(5,12,8,0.95)] border-r border-green-900/50 text-xs">
-      <div className="px-3 py-2 border-b border-green-900/60 flex items-center justify-between">
-        <div className="font-pixel text-[10px] tracking-[0.15em] text-[var(--green-light)]">
-          📜 QUESTS &amp; TIPS
-        </div>
-        <div className="font-pixel text-[9px] text-[var(--text-muted)]">{questsDone} done</div>
+      {/* Header */}
+      <div className="px-3 py-2.5 border-b border-green-900/60 flex items-center justify-between flex-shrink-0">
+        <span className="font-pixel text-[10px] tracking-[0.12em] text-[var(--green-light)]">📜 QUESTS</span>
+        <span className="font-pixel text-[9px] text-[var(--text-muted)] bg-black/30 px-1.5 py-0.5 rounded">{questsDone} done</span>
       </div>
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+
+      <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
+
+        {/* Active Quests */}
         <section>
-          <div className="font-pixel text-[10px] text-yellow-400 mb-2">ACTIVE QUESTS</div>
+          <div className="font-pixel text-[9px] text-yellow-400/80 mb-2 tracking-widest">ACTIVE QUESTS</div>
           <div className="space-y-2">
             {quests.map((q) => {
               const total = q.steps.length;
               const done = q.steps.filter((s) => s.done).length;
               const completed = done === total && total > 0;
+              const pct = total ? Math.round((done / total) * 100) : 0;
               return (
                 <div
                   key={q.id}
-                  className={`rounded border px-2 py-2 bg-yellow-500/5 ${
+                  className={`rounded-md border px-2.5 py-2 transition-all ${
                     completed
-                      ? 'border-green-500/40 text-green-400'
-                      : 'border-yellow-500/30 text-yellow-100'
+                      ? 'border-green-500/40 bg-green-500/8'
+                      : 'border-yellow-500/25 bg-yellow-500/5'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="font-pixel text-[10px]">
-                      {completed ? '✅ ' : '⚔️ '}
-                      {q.title}
-                    </div>
-                    <div className="font-pixel text-[9px] text-[var(--text-muted)]">
-                      {done}/{total}
-                    </div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`font-pixel text-[9px] leading-tight ${completed ? 'text-green-400' : 'text-yellow-300'}`}>
+                      {completed ? '✅ ' : '⚔️ '}{q.title}
+                    </span>
+                    <span className="font-pixel text-[8px] text-[var(--text-muted)]">{done}/{total}</span>
                   </div>
-                  <div className="w-full h-1 bg-black/40 rounded overflow-hidden mb-1.5">
+                  {/* Progress bar */}
+                  <div className="h-1 bg-black/40 rounded overflow-hidden mb-2">
                     <div
-                      className="h-full bg-yellow-400 transition-all"
-                      style={{ width: total ? `${(done / total) * 100}%` : '0%' }}
+                      className={`h-full rounded transition-all duration-500 ${completed ? 'bg-green-400' : 'bg-yellow-400'}`}
+                      style={{ width: `${pct}%` }}
                     />
                   </div>
+                  {/* Steps */}
                   <ul className="space-y-0.5">
                     {q.steps.map((s) => (
-                      <li
-                        key={s.label}
-                        className={`flex items-center gap-1 text-[10px] ${
-                          s.done ? 'line-through text-green-300' : 'text-[var(--text-muted)]'
-                        }`}
-                      >
-                        <span>{s.done ? '✓' : '○'}</span>
-                        <span>{s.label}</span>
+                      <li key={s.label} className="flex items-start gap-1.5">
+                        <span className={`text-[9px] mt-0.5 flex-shrink-0 ${s.done ? 'text-green-400' : 'text-[var(--text-muted)]'}`}>
+                          {s.done ? '✓' : '○'}
+                        </span>
+                        <span className={`text-[10px] leading-snug ${s.done ? 'line-through text-green-300/60' : 'text-[var(--text-muted)]'}`}>
+                          {s.label}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -157,48 +142,31 @@ export function QuestSidebar({ entries, questsDone, onAskTutor }: QuestSidebarPr
           </div>
         </section>
 
+        {/* Tutor Insights */}
         <section>
-          <div className="font-pixel text-[10px] text-[var(--green-light)] mb-2">TIPS</div>
-          <div className="space-y-2">
-            {tips.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-start gap-2 border border-green-900/40 bg-green-900/10 rounded px-2 py-1.5 text-[11px] text-[var(--text-muted)]"
-              >
-                <span className="mt-[1px]">{t.icon ?? '💡'}</span>
-                <span>{t.text}</span>
+          <div className="font-pixel text-[9px] text-blue-400/80 mb-2 tracking-widest">TUTOR INSIGHTS</div>
+          <div ref={tutorRef} className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+            {tutorEntries.length === 0 ? (
+              <div className="text-[10px] text-[var(--text-muted)] italic px-1">
+                Ask a question to see Aryan's insights here.
               </div>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <div className="font-pixel text-[10px] text-blue-400 mb-2">TUTOR INSIGHTS</div>
-          <div
-            ref={tutorRef}
-            className="space-y-1.5 max-h-40 overflow-y-auto pr-1"
-          >
-            {tutorEntries.map((t) => (
-              <div
-                key={t.id}
-                className="border border-blue-800/40 bg-blue-900/10 rounded px-2 py-1.5"
-              >
-                <div className="font-pixel text-[9px] text-blue-300 mb-0.5">
-                  🤖 Aryan · AI Tutor
+            ) : (
+              tutorEntries.map((t) => (
+                <div key={t.id} className="border border-blue-800/40 bg-blue-900/10 rounded-md px-2.5 py-2">
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="text-[10px]">🤖</span>
+                    <span className="font-pixel text-[8px] text-blue-400/80">Aryan · AI Tutor</span>
+                  </div>
+                  <p className="text-[10px] text-[var(--text)] leading-relaxed">{t.text}</p>
                 </div>
-                <div className="text-[11px] text-[var(--text)]">{t.text}</div>
-              </div>
-            ))}
-            {tutorEntries.length === 0 && (
-              <div className="text-[10px] text-[var(--text-muted)]">
-                Ask the AI Tutor a question to see reflections here.
-              </div>
+              ))
             )}
           </div>
         </section>
 
+        {/* Ask Tutor */}
         <section>
-          <div className="font-pixel text-[10px] text-blue-400 mb-2">ASK TUTOR</div>
+          <div className="font-pixel text-[9px] text-blue-400/80 mb-2 tracking-widest">ASK TUTOR</div>
           <div className="space-y-1">
             {[
               'What is the 50/30/20 rule?',
@@ -210,15 +178,15 @@ export function QuestSidebar({ entries, questsDone, onAskTutor }: QuestSidebarPr
                 key={q}
                 type="button"
                 onClick={() => onAskTutor(q)}
-                className="w-full text-left text-[10px] font-pixel border border-blue-900/40 bg-blue-900/5 rounded px-2 py-1 text-[var(--text-muted)] hover:text-[var(--blue-light)] hover:border-blue-800/50 hover:bg-blue-900/15 transition"
+                className="w-full text-left text-[10px] border border-blue-900/30 bg-blue-900/5 rounded px-2 py-1.5 text-[var(--text-muted)] hover:text-[var(--blue-light)] hover:border-blue-700/50 hover:bg-blue-900/15 transition-all leading-snug"
               >
                 ↗ {q}
               </button>
             ))}
           </div>
         </section>
+
       </div>
     </aside>
   );
 }
-
