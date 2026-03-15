@@ -9,6 +9,7 @@ const BudgetTetris = dynamic(
   () => import('@/components/BudgetTetris').then((m) => m.BudgetTetris),
   { ssr: false },
 );
+const BudgetGame = dynamic(() => import('@/components/BudgetGame').then((m) => m.BudgetGame), { ssr: false });
 
 const AVATARS = [
   { emoji: '📚', name: 'Scholarship Grinder', gold: 500, stat: 'HIGH' },
@@ -402,7 +403,7 @@ export default function GameView() {
                 <div className="font-pixel text-gold text-xs">🏠 DORMS — Roommate Rent Chat</div>
                 <div className="text-sm text-[var(--text-muted)]">Split rent, handle UPI drama · Grok-generated scenario</div>
               </button>
-              <button onClick={() => { setModal(null); showToast('Market 50/30/20 — coming soon!'); }} className="w-full text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5">
+              <button onClick={() => { setModal(null); setModal('market'); }} className="w-full text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5">
                 <div className="font-pixel text-gold text-xs">🛒 MARKET — 50/30/20</div>
                 <div className="text-sm text-[var(--text-muted)]">Drag & drop your ₹15k budget</div>
               </button>
@@ -504,7 +505,23 @@ export default function GameView() {
         />
       )}
 
-      {/* AI Tutor panel */}
+      {modal === 'market' && (
+        <BudgetGame
+          onClose={() => setModal(null)}
+          onComplete={(correct, xp, gold) => {
+            setState(s => ({
+              ...s,
+              xp: s.xp + xp,
+              gold: s.gold + gold,
+              questsDone: s.questsDone + 1,
+              budgetProgress: Math.min(100, s.budgetProgress + 33),
+            }));
+            addChat('quest', `Market: categorized ${correct}/12 expenses correctly! +${xp} XP`);
+            showToast(`+${xp} XP · +₹${gold} Gold 🎉`);
+          }}
+        />
+      )}
+
       {tutorOpen && (
         <div className="fixed right-0 top-0 bottom-0 w-full sm:w-96 bg-[rgba(5,15,35,0.97)] border-l-2 border-blue-500/50 z-[300] flex flex-col shadow-2xl">
           <div className="flex justify-between items-center p-4 border-b border-blue-500/30">
