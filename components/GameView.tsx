@@ -196,7 +196,6 @@ export default function GameView() {
   const openBudgetingCity = () => {
     setModal('budgeting-city');
     markQuestStep('q-budget-basics', 0);
-    markQuestStep('q-roommate', 0);
   };
 
   const dormChoice = (i: number) => {
@@ -324,7 +323,7 @@ export default function GameView() {
                 </div>
                 <div>
                   <div className="font-pixel text-[9px] text-[var(--text)] uppercase mb-1">
-                    ALEX, LV.{state.level}
+                    {state.avatar.name}, LV.{state.level}
                   </div>
                   <div className="flex gap-1 mb-1">
                     {Array.from({ length: 10 }).map((_, i) => {
