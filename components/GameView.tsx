@@ -5,6 +5,10 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
 const GameCanvas = dynamic(() => import('@/components/GameCanvas'), { ssr: false });
+const BudgetTetris = dynamic(
+  () => import('@/components/BudgetTetris').then((m) => m.BudgetTetris),
+  { ssr: false },
+);
 
 const AVATARS = [
   { emoji: '📚', name: 'Scholarship Grinder', gold: 500, stat: 'HIGH' },
@@ -383,7 +387,13 @@ export default function GameView() {
             </div>
             <div className="p-6 space-y-4">
               <p className="text-[var(--text-muted)] text-sm">Where do you want to go?</p>
-              <button onClick={() => { setModal(null); showToast('Budget Tetris — coming in next update!'); }} className="w-full text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5">
+              <button
+                onClick={() => {
+                  setModal(null);
+                  setModal('tetris');
+                }}
+                className="w-full text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5"
+              >
                 <div className="font-pixel text-gold text-xs">🧱 BUDGET TETRIS</div>
                 <div className="text-sm text-[var(--text-muted)]">Falling expense blocks · Catch income, dodge overspending</div>
               </button>
@@ -443,9 +453,18 @@ export default function GameView() {
                     <span className="font-pixel text-xs bg-blue-500/20 text-blue-200 px-2 py-1 rounded">+{dormOutcome.xp} XP</span>
                     {dormOutcome.gold > 0 && <span className="font-pixel text-xs bg-gold/20 text-gold px-2 py-1 rounded">+₹{dormOutcome.gold} Gold</span>}
                   </div>
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex gap-2 mt-4 flex-wrap">
                     <button onClick={() => sendTutor('Why is it risky to let my roommate delay UPI payment?')} className="font-pixel text-xs bg-green text-white px-3 py-1.5 rounded">
                       🤖 Ask AI Tutor
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDormOutcome(null);
+                        fetchDormScenario();
+                      }}
+                      className="font-pixel text-xs bg-blue-500/20 text-blue-200 border border-blue-500/40 px-3 py-1.5 rounded"
+                    >
+                      ♻️ New Scenario
                     </button>
                     <button onClick={() => setModal(null)} className="font-pixel text-xs bg-gold/15 text-gold border border-gold/30 px-3 py-1.5 rounded">
                       ← Back to City
@@ -456,6 +475,32 @@ export default function GameView() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: Budget Tetris */}
+      {modal === 'tetris' && (
+        <BudgetTetris
+          onClose={() => setModal(null)}
+          onGameOver={(finalScore, clearedLines) => {
+            const xpEarned = Math.min(150, Math.floor(finalScore / 100));
+            if (xpEarned > 0 || clearedLines > 0) {
+              setState((s) => ({
+                ...s,
+                xp: s.xp + xpEarned,
+                gold: s.gold + xpEarned * 2,
+                questsDone: s.questsDone + 1,
+                budgetProgress: Math.min(100, s.budgetProgress + 20),
+              }));
+              addChat(
+                'quest',
+                `Budget Tetris: cleared ${clearedLines} line(s), saved virtual ₹${finalScore.toLocaleString(
+                  'en-IN',
+                )}.`,
+              );
+              showToast(`Game Over! Score: ₹${finalScore} · +${xpEarned} XP`);
+            }
+          }}
+        />
       )}
 
       {/* AI Tutor panel */}
