@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  turbopack: false,
+  turbopack: {},
   images: {
     remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co', pathname: '/**' }],
     unoptimized: true,
