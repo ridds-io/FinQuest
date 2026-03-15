@@ -1,5 +1,5 @@
 import { createServerSupabase } from './supabase-server';
-import { callGrok } from './grok';
+import { callGrok } from './groq';
 import type { GameState } from '@/types';
 
 /**

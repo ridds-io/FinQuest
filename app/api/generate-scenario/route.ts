@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateScenario } from '@/lib/grok';
+import { generateScenario } from '@/lib/groq';
 import type { ScenarioInput } from '@/types';
 
 export const runtime = 'nodejs';

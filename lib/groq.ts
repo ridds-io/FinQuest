@@ -1,44 +1,42 @@
-/**
- * xAI Grok API client (OpenAI-compatible endpoint).
- * Replace ALL Claude/Anthropic calls with Grok.
- * Base URL: https://api.x.ai/v1
- */
 
-const GROK_BASE = 'https://api.x.ai/v1';
-const GROK_MODEL = 'grok-2-1212'; // or grok-beta per xAI docs
+
+const GROQ_BASE = 'https://api.groq.com/openai/v1';
+const GROQ_MODEL = 'llama-3.1-8b-instant';
 
 export async function callGrok(
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
   options?: { max_tokens?: number; temperature?: number }
 ): Promise<string> {
-  const key = process.env.XAI_API_KEY;
+  const key = process.env.GROQ_API_KEY;
   if (!key) {
-    console.warn('XAI_API_KEY not set');
-    return 'I couldn’t connect to the AI. Please add XAI_API_KEY in .env.local and try again.';
+    console.warn('GROQ_API_KEY not set');
+    return "AI not connected. Add GROQ_API_KEY to .env.local";
   }
-  const res = await fetch(`${GROK_BASE}/chat/completions`, {
+
+  const res = await fetch(`${GROQ_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${key}`,
     },
     body: JSON.stringify({
-      model: GROK_MODEL,
+      model: GROQ_MODEL,
       messages,
       max_tokens: options?.max_tokens ?? 500,
       temperature: options?.temperature ?? 0.7,
     }),
   });
+
   if (!res.ok) {
     const err = await res.text();
-    console.error('Grok API error details:', { status: res.status, body: err, key: key ? 'SET' : 'MISSING' });
-    return 'Sorry, the AI service is temporarily unavailable. Try again in a moment.';
+    console.error('Groq API error:', { status: res.status, body: err });
+    return 'Sorry, AI service unavailable. Try again.';
   }
-  const data = (await res.json()) as {
+
+  const data = await res.json() as {
     choices?: Array<{ message?: { content?: string } }>;
   };
-  const content = data.choices?.[0]?.message?.content ?? '';
-  return content.trim();
+  return data.choices?.[0]?.message?.content?.trim() ?? '';
 }
 
 export interface ScenarioInput {
