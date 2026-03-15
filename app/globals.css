@@ -28,6 +28,31 @@ body { font-family: var(--body), 'Outfit', sans-serif; background: var(--dark); 
 
 .font-pixel { font-family: 'Press Start 2P', monospace; }
 
+.player-sprite {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  background-image: url('/sprites/characters/nick-walk.png');
+  background-repeat: no-repeat;
+  animation: walk 0.5s steps(4) infinite;
+}
+.player-sprite.idle {
+  background-image: url('/sprites/characters/nick-stand.png');
+  animation: none;
+}
+.player-sprite.flip {
+  transform: scaleX(-1);
+}
+@keyframes walk {
+  from { background-position: 0px 0px; }
+  to   { background-position: -256px 0px; }
+}
+
+@keyframes treeSway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
