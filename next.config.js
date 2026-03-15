@@ -4,9 +4,6 @@ const nextConfig = {
     remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co', pathname: '/**' }],
     unoptimized: true,
   },
-  experimental: {
-    turbopack: false,
-  },
   webpack: (config, { isServer }) => {
     if (isServer) config.resolve.alias = { ...config.resolve.alias, phaser: false };
     return config;
