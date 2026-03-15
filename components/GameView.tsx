@@ -594,11 +594,13 @@ export default function GameView() {
                 questsDone: s.questsDone + 1,
                 budgetProgress: Math.min(100, s.budgetProgress + 20),
               }));
-              addChat(
-                if (clearedLines >= 3) {
-                  markQuestStep('q-tetris', 0);
-                  markQuestStep('q-tetris', 1);
-                }
+              addTutorToSidebar(
+                `Budget Tetris: cleared ${clearedLines} line(s), saved virtual ₹${finalScore.toLocaleString('en-IN')}.`
+              );
+              if (clearedLines >= 3) {
+                markQuestStep('q-tetris', 0);
+                markQuestStep('q-tetris', 1);
+              }
               showToast(`Game Over! Score: ₹${finalScore} · +${xpEarned} XP`);
             }
           }}
