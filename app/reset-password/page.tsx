@@ -3,16 +3,13 @@ export const dynamic = 'force-dynamic';
 
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+
 
 
 export default function ResetPasswordPage() {
   const router = useRouter();
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,6 +27,13 @@ export default function ResetPasswordPage() {
       }
       setLoading(true);
       try {
+
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        );
+        
         const { error: err } = await supabase.auth.updateUser({ password });
         if (err) {
           setError(err.message);
