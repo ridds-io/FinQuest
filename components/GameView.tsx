@@ -191,6 +191,7 @@ export default function GameView() {
   };
 
   const sendTutor = async (prefill?: string) => {
+    setTutorOpen(true);
     const msg = (prefill ?? tutorInput).trim();
     if (!msg || tutorLoading) return;
     setTutorInput('');

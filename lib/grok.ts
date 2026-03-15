@@ -5,7 +5,7 @@
  */
 
 const GROK_BASE = 'https://api.x.ai/v1';
-const GROK_MODEL = 'grok-3-beta'; // or grok-beta per xAI docs
+const GROK_MODEL = 'grok-beta'; // or grok-beta per xAI docs
 
 export async function callGrok(
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
@@ -31,7 +31,7 @@ export async function callGrok(
   });
   if (!res.ok) {
     const err = await res.text();
-    console.error('Grok API error', res.status, err);
+    console.error('Grok API error details:', { status: res.status, body: err, key: key ? 'SET' : 'MISSING' });
     return 'Sorry, the AI service is temporarily unavailable. Try again in a moment.';
   }
   const data = (await res.json()) as {
