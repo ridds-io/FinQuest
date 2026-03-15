@@ -11,6 +11,27 @@
 
 ---
 
+## ⚡ Quick Start (Production — Grok API + Vercel)
+
+This codebase is **production-ready** with **xAI Grok API** (replacing Claude) and Supabase.
+
+```bash
+cp .env.example .env.local
+# Edit .env.local: set XAI_API_KEY (get from https://console.x.ai/), Supabase URL + keys
+npm install
+npm run dev
+```
+
+- **Landing:** `/` — Marketing + Start Game  
+- **Game:** `/game` — Avatar select → Phaser world, zones, Dorms (Grok scenarios), AI Tutor (RAG + Grok)  
+- **Profile:** `/profile` — Progress, gold, achievements (persisted in `localStorage`)
+
+**Deploy to Vercel:** `vercel --prod` (or connect GitHub). Ensure env vars are set in Vercel dashboard.
+
+**PWA:** Add `public/icon-192.png` and `public/icon-512.png` for install prompt. Game state is cached in `localStorage` for offline play.
+
+---
+
 ## 🎯 Problem Statement
 
 73% of engineering graduates carry avoidable credit card debt within their first year of employment, costing ₹50,000-2,00,000 in unnecessary interest payments. Traditional financial education achieves only 5-20% completion rates and R² = 0.001 behavioral impact because they rely on passive, generic, Western-centric content. 

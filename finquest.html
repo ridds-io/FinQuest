@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinQuest - A Monetary Odyssey</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #FFD700;
+    --gold-dark: #CC9900;
+    --green: #4CAF50;
+    --green-dark: #2E7D32;
+    --green-light: #81C784;
+    --dark: #1a1a2e;
+    --dark2: #16213e;
+    --dark3: #0f3460;
+    --panel: rgba(10,20,40,0.92);
+    --panel-border: rgba(255,215,0,0.35);
+    --text: #e8e0c8;
+    --text-muted: #a0926e;
+    --red: #e53935;
+    --blue: #1565C0;
+    --blue-light: #42A5F5;
+    --pixel: 'Press Start 2P', monospace;
+    --body: 'Outfit', sans-serif;
+    --hp-red: #ff4444;
+    --xp-blue: #4488ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--body); background: var(--dark); color: var(--text); overflow-x: hidden; }
+
+  /* ====== SCREEN MANAGER ====== */
+  .screen { display: none; width: 100%; min-height: 100vh; }
+  .screen.active { display: flex; }
+
+  /* ====== LANDING PAGE ====== */
+  #screen-landing {
+    flex-direction: column;
+    background: linear-gradient(180deg, #0a0e1a 0%, #0d2a1a 40%, #0a1a0a 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .pixel-grid-bg {
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(0,255,100,0.04) 31px, rgba(0,255,100,0.04) 32px),
+      repeating-linear-gradient(90deg, transparent, transparent 31px, rgba(0,255,100,0.04) 31px, rgba(0,255,100,0.04) 32px);
+    pointer-events: none;
+  }
+  .landing-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 2.5rem;
+    border-bottom: 1px solid rgba(255,215,0,0.15);
+    position: relative; z-index: 10;
+  }
+  .logo-text { font-family: var(--pixel); font-size: 1rem; color: var(--gold); letter-spacing: 2px; text-shadow: 0 0 20px rgba(255,215,0,0.5); }
+  .nav-links { display: flex; gap: 2rem; }
+  .nav-links a { color: var(--text-muted); font-size: 0.875rem; text-decoration: none; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--gold); }
+  .btn-nav { background: var(--gold); color: var(--dark); font-family: var(--pixel); font-size: 0.55rem; padding: 0.6rem 1.2rem; border: none; cursor: pointer; border-radius: 2px; transition: all 0.2s; }
+  .btn-nav:hover { background: #fff; transform: translateY(-1px); }
+
+  .hero {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 5rem 2rem 3rem; position: relative; z-index: 5;
+    flex: 1;
+  }
+  .hero-badge { font-family: var(--pixel); font-size: 0.45rem; color: var(--green-light); background: rgba(76,175,80,0.15); border: 1px solid rgba(76,175,80,0.4); padding: 0.4rem 1rem; border-radius: 20px; margin-bottom: 2rem; letter-spacing: 2px; }
+  .hero-title {
+    font-family: var(--pixel); font-size: clamp(1.5rem, 5vw, 3rem);
+    color: var(--gold); margin-bottom: 0.3rem;
+    text-shadow: 0 0 40px rgba(255,215,0,0.6), 4px 4px 0 rgba(0,0,0,0.5);
+    line-height: 1.3;
+  }
+  .hero-sub-title { font-family: var(--pixel); font-size: clamp(0.5rem, 1.5vw, 0.75rem); color: var(--text-muted); margin-bottom: 1.5rem; letter-spacing: 1px; }
+  .hero-tagline { font-size: 1.1rem; color: var(--text); max-width: 540px; line-height: 1.7; margin-bottom: 2.5rem; font-weight: 300; }
+  .hero-tagline strong { color: var(--gold); font-weight: 600; }
+  .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3rem; }
+  .btn-primary { font-family: var(--pixel); font-size: 0.6rem; background: var(--gold); color: var(--dark); border: none; padding: 1rem 2rem; cursor: pointer; border-radius: 2px; letter-spacing: 1px; transition: all 0.2s; box-shadow: 0 4px 0 var(--gold-dark), 0 8px 20px rgba(255,215,0,0.3); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--gold-dark), 0 12px 30px rgba(255,215,0,0.4); }
+  .btn-primary:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--gold-dark); }
+  .btn-secondary { font-family: var(--pixel); font-size: 0.55rem; background: transparent; color: var(--green-light); border: 1px solid var(--green); padding: 1rem 2rem; cursor: pointer; border-radius: 2px; letter-spacing: 1px; transition: all 0.2s; }
+  .btn-secondary:hover { background: rgba(76,175,80,0.15); }
+
+  .stats-row { display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; }
+  .stat-pill { font-family: var(--pixel); font-size: 0.45rem; color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 20px; }
+  .stat-pill span { color: var(--gold); }
+
+  .features { padding: 4rem 2rem; position: relative; z-index: 5; }
+  .section-label { font-family: var(--pixel); font-size: 0.5rem; color: var(--green-light); text-align: center; letter-spacing: 3px; margin-bottom: 1rem; }
+  .section-title { font-family: var(--pixel); font-size: clamp(0.8rem, 2vw, 1.2rem); color: var(--text); text-align: center; margin-bottom: 3rem; line-height: 1.8; }
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; max-width: 900px; margin: 0 auto; }
+  .feature-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,215,0,0.15);
+    border-radius: 4px; padding: 2rem; position: relative; overflow: hidden;
+    transition: all 0.3s; cursor: pointer;
+  }
+  .feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--gold); opacity: 0; transition: opacity 0.3s; }
+  .feature-card:hover { border-color: rgba(255,215,0,0.4); transform: translateY(-4px); }
+  .feature-card:hover::before { opacity: 1; }
+  .card-icon { font-size: 2rem; margin-bottom: 1rem; }
+  .card-title { font-family: var(--pixel); font-size: 0.6rem; color: var(--gold); margin-bottom: 0.8rem; line-height: 1.8; }
+  .card-desc { font-size: 0.875rem; color: var(--text-muted); line-height: 1.7; }
+  .card-modules { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 1rem; }
+  .module-tag { font-family: var(--pixel); font-size: 0.4rem; background: rgba(76,175,80,0.15); color: var(--green-light); border: 1px solid rgba(76,175,80,0.3); padding: 0.3rem 0.6rem; border-radius: 2px; display: inline-block; }
+
+  .landing-footer { border-top: 1px solid rgba(255,255,255,0.08); padding: 2rem; text-align: center; font-size: 0.75rem; color: var(--text-muted); position: relative; z-index: 5; }
+
+  /* ====== AVATAR SELECT ====== */
+  #screen-avatar {
+    flex-direction: column; align-items: center; justify-content: center;
+    background: var(--dark); padding: 3rem 2rem; min-height: 100vh;
+  }
+  .avatar-title { font-family: var(--pixel); font-size: 1rem; color: var(--gold); text-align: center; margin-bottom: 0.5rem; }
+  .avatar-sub { font-size: 0.9rem; color: var(--text-muted); text-align: center; margin-bottom: 2.5rem; }
+  .avatars-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; max-width: 900px; width: 100%; margin-bottom: 2rem; }
+  .avatar-card {
+    background: rgba(255,255,255,0.04); border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 4px; padding: 1.5rem; cursor: pointer; transition: all 0.25s; text-align: center;
+  }
+  .avatar-card:hover, .avatar-card.selected { border-color: var(--gold); background: rgba(255,215,0,0.08); }
+  .avatar-card.selected { box-shadow: 0 0 20px rgba(255,215,0,0.3); }
+  .avatar-emoji { font-size: 3rem; margin-bottom: 0.8rem; display: block; }
+  .avatar-name { font-family: var(--pixel); font-size: 0.55rem; color: var(--gold); margin-bottom: 0.5rem; line-height: 1.6; }
+  .avatar-detail { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+  .avatar-stat { font-family: var(--pixel); font-size: 0.4rem; margin-top: 0.8rem; }
+  .avatar-stat span { color: var(--green-light); }
+
+  /* ====== GAME SCREEN ====== */
+  #screen-game {
+    flex-direction: column; background: var(--dark2); min-height: 100vh;
+  }
+  .game-hud {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--panel); border-bottom: 2px solid var(--panel-border);
+    padding: 0.7rem 1.5rem; position: sticky; top: 0; z-index: 100;
+    flex-wrap: wrap; gap: 0.5rem;
+  }
+  .hud-left { display: flex; align-items: center; gap: 1rem; }
+  .avatar-mini { width: 42px; height: 42px; border: 2px solid var(--gold); border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: rgba(0,0,0,0.5); }
+  .hud-stats { display: flex; flex-direction: column; gap: 3px; }
+  .hud-name { font-family: var(--pixel); font-size: 0.45rem; color: var(--gold); }
+  .hud-bars { display: flex; flex-direction: column; gap: 3px; }
+  .bar-row { display: flex; align-items: center; gap: 6px; }
+  .bar-label { font-family: var(--pixel); font-size: 0.35rem; color: var(--text-muted); width: 20px; }
+  .bar-bg { width: 90px; height: 6px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 1px; overflow: hidden; }
+  .bar-fill { height: 100%; transition: width 0.5s; }
+  .bar-hp { background: var(--hp-red); }
+  .bar-xp { background: var(--xp-blue); }
+  .hud-center { display: flex; align-items: center; gap: 1.5rem; }
+  .hud-coin { font-family: var(--pixel); font-size: 0.55rem; color: var(--gold); display: flex; align-items: center; gap: 0.4rem; }
+  .hud-coin::before { content: '🪙'; font-size: 0.9rem; }
+  .hud-gem { font-family: var(--pixel); font-size: 0.55rem; color: #69f0ae; display: flex; align-items: center; gap: 0.4rem; }
+  .hud-gem::before { content: '💎'; font-size: 0.8rem; }
+  .hud-quest-tag { font-family: var(--pixel); font-size: 0.38rem; color: #ffcc02; background: rgba(255,204,2,0.12); border: 1px solid rgba(255,204,2,0.3); padding: 0.3rem 0.7rem; border-radius: 2px; }
+  .hud-right { display: flex; align-items: center; gap: 0.7rem; }
+  .hud-btn { font-family: var(--pixel); font-size: 0.4rem; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.2); color: var(--text); padding: 0.5rem 0.8rem; border-radius: 2px; cursor: pointer; transition: all 0.2s; }
+  .hud-btn:hover { background: rgba(255,215,0,0.15); border-color: var(--gold); color: var(--gold); }
+  .hud-ai-btn { background: rgba(76,175,80,0.2); border-color: rgba(76,175,80,0.5); color: var(--green-light); }
+  .hud-ai-btn:hover { background: rgba(76,175,80,0.35); }
+
+  /* GAME MAIN AREA */
+  .game-main { display: flex; flex: 1; min-height: 0; }
+
+  /* WORLD MAP AREA */
+  .world-area { flex: 1; position: relative; overflow: hidden; min-height: 500px; background: #2d5a1b; }
+  .world-canvas { width: 100%; height: 100%; position: relative; }
+
+  /* Isometric city map */
+  .city-map {
+    position: relative; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: grab;
+  }
+  .city-map:active { cursor: grabbing; }
+
+  /* MAP SVG */
+  .map-svg-wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+
+  /* ZONES */
+  .zone {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; cursor: pointer; transition: all 0.2s;
+  }
+  .zone:hover { filter: brightness(1.2); transform: scale(1.05); }
+  .zone-label { font-family: var(--pixel); font-size: 0.45rem; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000; text-align: center; line-height: 1.6; margin-top: 4px; }
+  .zone-building { font-size: 2.5rem; filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.6)); }
+
+  /* CHAT LOG */
+  .chat-log {
+    width: 220px; background: rgba(5,15,10,0.92); border-right: 1px solid rgba(76,175,80,0.3);
+    display: flex; flex-direction: column; border-left: 1px solid rgba(76,175,80,0.2);
+  }
+  .chat-log-header { font-family: var(--pixel); font-size: 0.45rem; color: var(--green-light); padding: 0.7rem 1rem; border-bottom: 1px solid rgba(76,175,80,0.2); }
+  .chat-log-messages { flex: 1; overflow-y: auto; padding: 0.7rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .chat-msg { font-size: 0.72rem; color: var(--text-muted); line-height: 1.5; padding: 0.4rem 0.6rem; border-radius: 2px; }
+  .chat-msg.quest { color: #ffcc02; background: rgba(255,204,2,0.07); border-left: 2px solid #ffcc02; }
+  .chat-msg.tip { color: var(--green-light); background: rgba(76,175,80,0.07); border-left: 2px solid var(--green); }
+  .chat-msg.ai { color: var(--blue-light); background: rgba(21,101,192,0.1); border-left: 2px solid var(--blue-light); }
+  .chat-msg .msg-sender { font-family: var(--pixel); font-size: 0.35rem; margin-bottom: 3px; opacity: 0.7; }
+
+  /* HOTBAR */
+  .hotbar { background: var(--panel); border-top: 2px solid var(--panel-border); padding: 0.7rem 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+  .hotbar-tools { display: flex; gap: 0.6rem; }
+  .tool-slot { width: 52px; height: 52px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.15); border-radius: 3px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-direction: column; gap: 2px; }
+  .tool-slot:hover { border-color: var(--gold); background: rgba(255,215,0,0.1); }
+  .tool-slot.active { border-color: var(--gold); background: rgba(255,215,0,0.15); box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+  .tool-icon { font-size: 1.3rem; }
+  .tool-name { font-family: var(--pixel); font-size: 0.3rem; color: var(--text-muted); text-align: center; }
+  .hotbar-actions { display: flex; gap: 0.5rem; }
+  .action-btn { font-family: var(--pixel); font-size: 0.4rem; padding: 0.5rem 1rem; border: none; cursor: pointer; border-radius: 2px; transition: all 0.2s; }
+  .action-btn.map { background: rgba(100,150,255,0.2); color: #93c5fd; border: 1px solid rgba(100,150,255,0.4); }
+  .action-btn.inventory { background: rgba(180,130,60,0.2); color: #fbbf24; border: 1px solid rgba(180,130,60,0.4); }
+  .action-btn.quests { background: rgba(100,200,100,0.2); color: var(--green-light); border: 1px solid rgba(100,200,100,0.4); }
+  .action-btn.menu { background: rgba(150,150,150,0.2); color: #d1d5db; border: 1px solid rgba(150,150,150,0.4); }
+  .action-btn:hover { filter: brightness(1.3); transform: translateY(-1px); }
+
+  /* ====== MODAL / SCENE OVERLAY ====== */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    z-index: 200; align-items: center; justify-content: center; padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+
+  /* ROOMMATE SCENE */
+  .scene-window {
+    background: var(--dark2); border: 2px solid var(--panel-border);
+    border-radius: 4px; max-width: 800px; width: 100%; position: relative;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .scene-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.5rem; border-bottom: 1px solid var(--panel-border);
+    background: rgba(0,0,0,0.4);
+  }
+  .scene-title { font-family: var(--pixel); font-size: 0.65rem; color: var(--gold); }
+  .scene-close { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+  .scene-close:hover { color: var(--red); }
+
+  /* DORMS scene */
+  .dorm-scene { padding: 1.5rem; }
+  .dorm-room { background: rgba(180,140,90,0.1); border: 1px solid rgba(180,140,90,0.25); border-radius: 4px; padding: 1.5rem; margin-bottom: 1.5rem; display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap; }
+  .dorm-illustration { font-size: 5rem; text-align: center; flex-shrink: 0; }
+  .dorm-dialogue { flex: 1; min-width: 200px; }
+  .dialogue-speaker { font-family: var(--pixel); font-size: 0.5rem; color: var(--gold); margin-bottom: 0.6rem; }
+  .dialogue-text { font-size: 0.9rem; color: var(--text); line-height: 1.7; margin-bottom: 1rem; }
+  .decision-note { font-family: var(--pixel); font-size: 0.4rem; color: #ffcc02; background: rgba(255,204,2,0.08); border: 1px solid rgba(255,204,2,0.25); padding: 0.5rem 0.8rem; border-radius: 2px; margin-bottom: 1rem; }
+  .choices-grid { display: grid; grid-template-columns: 1fr; gap: 0.7rem; }
+  .choice-btn {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px; padding: 1rem 1.2rem; cursor: pointer; transition: all 0.2s;
+    text-align: left; display: flex; justify-content: space-between; align-items: center;
+  }
+  .choice-btn:hover { border-color: var(--gold); background: rgba(255,215,0,0.08); }
+  .choice-label { font-family: var(--pixel); font-size: 0.45rem; color: var(--gold); margin-bottom: 0.4rem; line-height: 1.6; }
+  .choice-cost { font-size: 0.8rem; color: var(--text-muted); }
+  .choice-meta { font-family: var(--pixel); font-size: 0.38rem; color: var(--green-light); text-align: right; }
+  .outcome-panel { background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.3); border-radius: 4px; padding: 1.2rem; display: none; }
+  .outcome-panel.show { display: block; }
+  .outcome-title { font-family: var(--pixel); font-size: 0.55rem; color: var(--green-light); margin-bottom: 0.8rem; }
+  .outcome-text { font-size: 0.875rem; color: var(--text); line-height: 1.7; margin-bottom: 1rem; }
+  .outcome-rewards { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .reward-tag { font-family: var(--pixel); font-size: 0.4rem; padding: 0.3rem 0.8rem; border-radius: 2px; }
+  .reward-xp { background: rgba(68,136,255,0.2); color: #93c5fd; border: 1px solid rgba(68,136,255,0.4); }
+  .reward-gold { background: rgba(255,215,0,0.15); color: var(--gold); border: 1px solid rgba(255,215,0,0.4); }
+
+  /* ====== BUDGETING MINI-GAME ====== */
+  .budget-scene { padding: 1.5rem; }
+  .budget-header { text-align: center; margin-bottom: 1.5rem; }
+  .budget-goal { font-family: var(--pixel); font-size: 0.55rem; color: var(--gold); margin-bottom: 0.5rem; }
+  .budget-progress-bar { height: 12px; background: rgba(0,0,0,0.4); border-radius: 2px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; max-width: 400px; margin: 0 auto 0.3rem; }
+  .budget-progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--green)); transition: width 0.5s; }
+  .budget-progress-label { font-family: var(--pixel); font-size: 0.38rem; color: var(--text-muted); text-align: center; }
+  .budget-tracker { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .budget-category {
+    flex: 1; min-width: 160px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px; padding: 1rem; text-align: center; min-height: 120px;
+    border-style: dashed; transition: all 0.2s; position: relative;
+  }
+  .budget-category.drag-over { border-color: var(--gold); background: rgba(255,215,0,0.08); }
+  .category-name { font-family: var(--pixel); font-size: 0.5rem; color: var(--text); margin-bottom: 0.3rem; }
+  .category-pct { font-family: var(--pixel); font-size: 0.38rem; color: var(--text-muted); margin-bottom: 0.8rem; }
+  .category-total { font-family: var(--pixel); font-size: 0.55rem; color: var(--gold); }
+  .dropped-items { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 6px; }
+  .expense-items-pool { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 1rem; }
+  .expense-card {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px; padding: 0.5rem 0.7rem; cursor: grab; transition: all 0.15s;
+    display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 70px;
+    user-select: none;
+  }
+  .expense-card:hover { border-color: var(--gold); background: rgba(255,215,0,0.1); transform: scale(1.05); }
+  .expense-card.dragging { opacity: 0.4; }
+  .expense-card.placed { opacity: 0.5; pointer-events: none; border-style: dashed; }
+  .expense-icon { font-size: 1.2rem; }
+  .expense-name { font-family: var(--pixel); font-size: 0.35rem; color: var(--text-muted); text-align: center; }
+  .expense-amount { font-family: var(--pixel); font-size: 0.4rem; color: var(--gold); }
+  .mini-placed-item { font-size: 0.9rem; }
+  .budget-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .budget-btn { font-family: var(--pixel); font-size: 0.45rem; padding: 0.7rem 1.5rem; border: none; cursor: pointer; border-radius: 2px; transition: all 0.2s; }
+  .budget-btn.done { background: var(--green); color: #fff; }
+  .budget-btn.cancel { background: rgba(200,50,50,0.3); color: #ff8888; border: 1px solid rgba(200,50,50,0.5); }
+  .budget-btn.help { background: rgba(100,150,255,0.2); color: #93c5fd; border: 1px solid rgba(100,150,255,0.4); }
+  .budget-btn:hover { filter: brightness(1.2); transform: translateY(-1px); }
+  .budget-result { background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.3); border-radius: 4px; padding: 1.2rem; display: none; margin-top: 1rem; }
+  .budget-result.show { display: block; }
+
+  /* ====== AI TUTOR PANEL ====== */
+  #screen-tutor {
+    position: fixed; right: 0; top: 0; bottom: 0; width: 360px;
+    background: rgba(5,15,35,0.97); border-left: 2px solid rgba(21,101,192,0.5);
+    z-index: 300; display: none; flex-direction: column;
+    transform: translateX(100%); transition: transform 0.3s;
+  }
+  #screen-tutor.open { display: flex; transform: translateX(0); }
+  .tutor-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; border-bottom: 1px solid rgba(21,101,192,0.3); }
+  .tutor-title { display: flex; align-items: center; gap: 0.7rem; }
+  .tutor-icon { width: 32px; height: 32px; background: var(--blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+  .tutor-name { font-family: var(--pixel); font-size: 0.55rem; color: var(--blue-light); }
+  .tutor-sub { font-size: 0.7rem; color: var(--text-muted); }
+  .tutor-close-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; }
+  .tutor-close-btn:hover { color: var(--red); }
+  .tutor-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.8rem; }
+  .tutor-msg { padding: 0.8rem 1rem; border-radius: 4px; font-size: 0.85rem; line-height: 1.6; }
+  .tutor-msg.ai { background: rgba(21,101,192,0.15); border: 1px solid rgba(21,101,192,0.25); color: var(--text); }
+  .tutor-msg.user { background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.2); color: var(--text); margin-left: 1.5rem; }
+  .tutor-msg.loading { color: var(--text-muted); font-style: italic; }
+  .tutor-msg-sender { font-family: var(--pixel); font-size: 0.38rem; margin-bottom: 5px; }
+  .tutor-msg.ai .tutor-msg-sender { color: var(--blue-light); }
+  .tutor-msg.user .tutor-msg-sender { color: var(--green-light); }
+  .tutor-input-area { padding: 1rem; border-top: 1px solid rgba(21,101,192,0.3); }
+  .tutor-quick-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
+  .quick-btn { font-family: var(--pixel); font-size: 0.33rem; background: rgba(21,101,192,0.15); color: var(--blue-light); border: 1px solid rgba(21,101,192,0.35); padding: 0.3rem 0.6rem; border-radius: 2px; cursor: pointer; transition: all 0.2s; }
+  .quick-btn:hover { background: rgba(21,101,192,0.3); }
+  .tutor-input-row { display: flex; gap: 0.5rem; }
+  .tutor-input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: var(--text); padding: 0.6rem 0.8rem; border-radius: 3px; font-family: var(--body); font-size: 0.85rem; outline: none; }
+  .tutor-input:focus { border-color: var(--blue-light); }
+  .tutor-input::placeholder { color: var(--text-muted); }
+  .tutor-send-btn { background: var(--blue); color: #fff; border: none; padding: 0.6rem 1rem; border-radius: 3px; cursor: pointer; font-family: var(--pixel); font-size: 0.4rem; transition: all 0.2s; }
+  .tutor-send-btn:hover { background: var(--blue-light); }
+  .tutor-send-btn:disabled { opacity: 0.5; cursor: default; }
+
+  /* QUIZ MODAL */
+  .quiz-scene { padding: 1.5rem; }
+  .quiz-q { font-size: 1rem; color: var(--text); line-height: 1.7; margin-bottom: 1.5rem; }
+  .quiz-options { display: flex; flex-direction: column; gap: 0.7rem; margin-bottom: 1.5rem; }
+  .quiz-option { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 3px; padding: 0.9rem 1.2rem; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; color: var(--text); text-align: left; }
+  .quiz-option:hover { border-color: var(--gold); background: rgba(255,215,0,0.08); }
+  .quiz-option.correct { border-color: var(--green); background: rgba(76,175,80,0.15); color: var(--green-light); }
+  .quiz-option.wrong { border-color: var(--red); background: rgba(229,57,53,0.1); color: #ff8888; }
+  .quiz-feedback { padding: 1rem; border-radius: 3px; font-size: 0.875rem; line-height: 1.6; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.good { background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.3); color: var(--green-light); }
+  .quiz-feedback.bad { background: rgba(229,57,53,0.08); border: 1px solid rgba(229,57,53,0.3); color: #ff8888; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--panel-border); color: var(--gold); font-family: var(--pixel); font-size: 0.45rem; padding: 0.8rem 1.5rem; border-radius: 3px; z-index: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+
+  /* ====== BUDGET TETRIS ====== */
+  .tetris-wrap { padding: 1.2rem 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
+  .tetris-board-area { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; }
+  .tetris-canvas { border: 2px solid var(--panel-border); image-rendering: pixelated; display: block; background: #050d18; }
+  .tetris-sidebar { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 1rem; }
+  .tetris-score-box { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,215,0,0.2); border-radius: 4px; padding: 1rem; text-align: center; }
+  .tetris-score-label { font-family: var(--pixel); font-size: 0.38rem; color: var(--text-muted); margin-bottom: 5px; }
+  .tetris-score-val { font-family: var(--pixel); font-size: 1rem; color: var(--gold); }
+  .tetris-next-box { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 1rem; }
+  .tetris-next-label { font-family: var(--pixel); font-size: 0.38rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+  .tetris-next-canvas { display: block; image-rendering: pixelated; }
+  .tetris-controls { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; padding: 0.8rem; }
+  .tetris-ctrl-title { font-family: var(--pixel); font-size: 0.35rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+  .tetris-ctrl-row { font-size: 0.75rem; color: var(--text-muted); line-height: 1.8; }
+  .tetris-ctrl-row span { color: var(--gold); font-family: var(--pixel); font-size: 0.35rem; }
+  .tetris-btn-row { display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.3rem; }
+  .tetris-btn { font-family: var(--pixel); font-size: 0.4rem; padding: 0.5rem 1rem; border: none; cursor: pointer; border-radius: 2px; transition: all 0.2s; }
+  .tetris-btn.start { background: var(--green); color: #fff; }
+  .tetris-btn.pause { background: rgba(255,215,0,0.2); color: var(--gold); border: 1px solid rgba(255,215,0,0.4); }
+  .tetris-btn.restart { background: rgba(200,50,50,0.25); color: #ff8888; border: 1px solid rgba(200,50,50,0.4); }
+  .tetris-btn:hover { filter: brightness(1.2); }
+  .tetris-mobile-dpad { display: none; gap: 0.3rem; flex-direction: column; align-items: center; margin-top: 0.5rem; }
+  .dpad-row { display: flex; gap: 0.3rem; }
+  .dpad-btn { width: 44px; height: 44px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+  .dpad-btn:active { background: rgba(255,215,0,0.2); }
+  .tetris-income-bar { background: rgba(76,175,80,0.08); border: 1px solid rgba(76,175,80,0.25); border-radius: 4px; padding: 0.8rem; }
+  .tetris-income-title { font-family: var(--pixel); font-size: 0.38rem; color: var(--green-light); margin-bottom: 0.5rem; }
+  .tetris-categories { display: flex; flex-direction: column; gap: 5px; }
+  .tcat-row { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; }
+  .tcat-label { width: 60px; color: var(--text-muted); font-size: 0.68rem; }
+  .tcat-bar-bg { flex: 1; height: 6px; background: rgba(0,0,0,0.4); border-radius: 1px; overflow: hidden; }
+  .tcat-bar-fill { height: 100%; border-radius: 1px; transition: width 0.3s; }
+  .tcat-val { font-family: var(--pixel); font-size: 0.32rem; color: var(--gold); min-width: 40px; text-align: right; }
+  @media(max-width:600px) { .tetris-mobile-dpad { display: flex; } .tetris-wrap { flex-direction: column; } }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+  ::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.3); border-radius: 3px; }
+
+  /* PROFILE SCREEN */
+  #screen-profile { flex-direction: column; background: var(--dark); padding: 2rem; min-height: 100vh; }
+  .profile-back { font-family: var(--pixel); font-size: 0.45rem; color: var(--text-muted); background: none; border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 2px; cursor: pointer; margin-bottom: 1.5rem; transition: all 0.2s; }
+  .profile-back:hover { color: var(--gold); border-color: var(--gold); }
+  .profile-grid { display: grid; grid-template-columns: 300px 1fr; gap: 1.5rem; max-width: 900px; flex-wrap: wrap; }
+  @media(max-width:700px) { .profile-grid { grid-template-columns: 1fr; } }
+  .profile-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,215,0,0.2); border-radius: 4px; padding: 1.5rem; }
+  .profile-avatar-big { font-size: 5rem; text-align: center; margin-bottom: 1rem; }
+  .profile-username { font-family: var(--pixel); font-size: 0.7rem; color: var(--gold); text-align: center; margin-bottom: 0.3rem; }
+  .profile-level { font-family: var(--pixel); font-size: 0.45rem; color: var(--text-muted); text-align: center; margin-bottom: 1.5rem; }
+  .profile-stats { display: flex; flex-direction: column; gap: 0.6rem; }
+  .profile-stat-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .psr-label { color: var(--text-muted); }
+  .psr-value { font-family: var(--pixel); font-size: 0.45rem; color: var(--gold); }
+  .achievements-section { margin-top: 1.5rem; }
+  .achievements-title { font-family: var(--pixel); font-size: 0.55rem; color: var(--text); margin-bottom: 1rem; }
+  .badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 0.7rem; }
+  .badge { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; padding: 0.7rem; text-align: center; }
+  .badge.earned { border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.06); }
+  .badge-icon { font-size: 1.5rem; display: block; margin-bottom: 4px; }
+  .badge-name { font-family: var(--pixel); font-size: 0.3rem; color: var(--text-muted); }
+  .badge.earned .badge-name { color: var(--gold); }
+  .module-progress { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.8rem; }
+  .mod-row { display: flex; flex-direction: column; gap: 4px; }
+  .mod-label { font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between; }
+  .mod-bar { height: 8px; background: rgba(0,0,0,0.4); border-radius: 1px; overflow: hidden; }
+  .mod-bar-fill { height: 100%; background: var(--green); border-radius: 1px; }
+
+  /* responsive */
+  @media(max-width:600px) {
+    .chat-log { display: none; }
+    .hero-title { font-size: 1.2rem; }
+    .hud-quest-tag { display: none; }
+    .nav-links { display: none; }
+  }
+
+  /* WORLD MAP visual */
+  .world-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 100%, #1a4020 0%, #2d5a1b 40%, #1a3a12 100%);
+    overflow: hidden;
+  }
+  .world-grid-overlay {
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,0.03) 39px,rgba(255,255,255,0.03) 40px),
+    repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,0.03) 39px,rgba(255,255,255,0.03) 40px);
+  }
+  .zones-container { position: absolute; inset: 0; }
+
+  /* pixel trees */
+  .tree { position: absolute; font-size: 1.5rem; animation: treeSway 3s ease-in-out infinite; pointer-events: none; }
+  @keyframes treeSway { 0%,100%{transform:rotate(-2deg)} 50%{transform:rotate(2deg)} }
+
+  /* player character */
+  .player-char {
+    position: absolute; font-size: 2.2rem; cursor: default;
+    transition: left 0.4s, top 0.4s; z-index: 10;
+    filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5));
+    animation: playerBob 1s ease-in-out infinite;
+  }
+  @keyframes playerBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+
+  /* zone highlights */
+  .zone-box {
+    position: absolute; border-radius: 4px; border: 2px solid rgba(255,215,0,0.3);
+    cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    padding-bottom: 8px; transition: all 0.25s; overflow: hidden;
+  }
+  .zone-box:hover { border-color: var(--gold); background: rgba(255,215,0,0.08); }
+  .zone-box:hover .zone-building { transform: scale(1.1) translateY(-4px); }
+  .zone-building { font-size: 3rem; transition: transform 0.25s; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.7)); }
+  .zone-label { font-family: var(--pixel); font-size: 0.38rem; color: #fff; text-shadow: 1px 1px 0 #000; text-align: center; padding: 2px 6px; background: rgba(0,0,0,0.5); border-radius: 2px; line-height: 1.5; }
+  .zone-locked { opacity: 0.45; }
+
+  /* river */
+  .river { position: absolute; background: rgba(20,100,200,0.5); border-radius: 50px; }
+</style>
+</head>
+<body>
+
+<!-- ============= LANDING PAGE ============= -->
+<div id="screen-landing" class="screen active">
+  <div class="pixel-grid-bg"></div>
+  <nav class="landing-nav">
+    <div class="logo-text">⚔️ FinQuest</div>
+    <div class="nav-links">
+      <a href="#">Features</a>
+      <a href="#">Modules</a>
+      <a href="#">Leaderboard</a>
+    </div>
+    <button class="btn-nav" onclick="showAvatar()">▶ Play Free</button>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-badge">🇮🇳 Made for Indian College Students</div>
+    <div class="hero-title">FinQuest</div>
+    <div class="hero-sub-title">A Monetary Odyssey</div>
+    <p class="hero-tagline">Master <strong>budgeting, investing & loans</strong> through an immersive RPG adventure. Real Indian scenarios — ₹ rents, UPI payments, chai stalls, PG life.</p>
+    <div class="hero-btns">
+      <button class="btn-primary" onclick="showAvatar()">▶ Start Free Game</button>
+      <button class="btn-secondary" onclick="showProfile()">📊 View Profile</button>
+    </div>
+    <div class="stats-row">
+      <div class="stat-pill">🎓 <span>1,000+</span> Students Learning</div>
+      <div class="stat-pill">🏆 <span>9</span> Modules</div>
+      <div class="stat-pill">🤖 <span>AI</span> Socratic Tutor</div>
+      <div class="stat-pill">🇮🇳 <span>SIT</span> Pune Beta</div>
+    </div>
+  </div>
+
+  <div class="features">
+    <div class="section-label">📚 Learning Modules</div>
+    <div class="section-title">Three Cities. Nine Modules. Infinite Scenarios.</div>
+    <div class="cards-grid">
+      <div class="feature-card" onclick="showAvatar()">
+        <div class="card-icon">🏘️</div>
+        <div class="card-title">Budgeting City</div>
+        <div class="card-desc">Navigate PG life in Pune. Split rent, track chai bills, optimize your ₹15k student budget.</div>
+        <div class="card-modules">
+          <span class="module-tag">📊 Personal Budgeting</span>
+          <span class="module-tag">🏷️ Student Discounts</span>
+          <span class="module-tag">📱 Expense Tracking</span>
+        </div>
+      </div>
+      <div class="feature-card" onclick="showAvatar()">
+        <div class="card-icon">🏗️</div>
+        <div class="card-title">Investment Tower</div>
+        <div class="card-desc">Start a SIP, pick mutual funds, understand why your senior went bankrupt day-trading Nifty.</div>
+        <div class="card-modules">
+          <span class="module-tag">📈 Stocks & MF</span>
+          <span class="module-tag">💰 SIP Calculator</span>
+          <span class="module-tag">🎯 Risk Profiling</span>
+        </div>
+      </div>
+      <div class="feature-card" onclick="showAvatar()">
+        <div class="card-icon">🏛️</div>
+        <div class="card-title">Loan Bank</div>
+        <div class="card-desc">Decode your education loan, avoid credit card traps, understand EMIs before signing anything.</div>
+        <div class="card-modules">
+          <span class="module-tag">🎓 Education Loans</span>
+          <span class="module-tag">💳 Credit Cards</span>
+          <span class="module-tag">📋 EMI Planning</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="landing-footer">
+    <p>Built with ❤️ at Symbiosis Institute of Technology, Pune &nbsp;|&nbsp; <a href="#" style="color:var(--text-muted)">Privacy</a> &nbsp;|&nbsp; <a href="#" style="color:var(--text-muted)">Terms</a> &nbsp;|&nbsp; <a href="#" style="color:var(--text-muted)">Contact</a></p>
+  </div>
+</div>
+
+<!-- ============= AVATAR SELECT ============= -->
+<div id="screen-avatar" class="screen">
+  <div style="max-width:900px;width:100%;padding:2rem;">
+    <button class="profile-back" onclick="showScreen('screen-landing')">← Back</button>
+    <div class="avatar-title">Choose Your Avatar</div>
+    <p class="avatar-sub">Your starting financial situation shapes your adventure. No judgment — every path teaches different lessons.</p>
+    <div class="avatars-grid">
+      <div class="avatar-card" onclick="selectAvatar(this,'📚','Scholarship Grinder','₹0 debt · ₹3k/month · High pressure')">
+        <span class="avatar-emoji">📚</span>
+        <div class="avatar-name">Scholarship Grinder</div>
+        <div class="avatar-detail">Zero debt, tiny budget. Must maintain GPA or lose everything.</div>
+        <div class="avatar-stat">Gold: <span>500</span> | Pressure: <span>HIGH</span></div>
+      </div>
+      <div class="avatar-card selected" onclick="selectAvatar(this,'🎒','Loan Leveraged','₹12L loan · Deferred interest · Complacency trap')">
+        <span class="avatar-emoji">🎒</span>
+        <div class="avatar-name">Loan Leveraged</div>
+        <div class="avatar-detail">₹12L education loan, interest ticking. The typical Indian student trap.</div>
+        <div class="avatar-stat">Gold: <span>2,000</span> | Loan: <span>₹12L</span></div>
+      </div>
+      <div class="avatar-card" onclick="selectAvatar(this,'💼','Hustle Economy','₹800-2k variable gig income · Cash flow chaos')">
+        <span class="avatar-emoji">💼</span>
+        <div class="avatar-name">Hustle Economy</div>
+        <div class="avatar-detail">Variable gig income (Swiggy, tutoring). Master cash flow or starve.</div>
+        <div class="avatar-stat">Gold: <span>800</span> | Volatility: <span>HIGH</span></div>
+      </div>
+      <div class="avatar-card" onclick="selectAvatar(this,'💎','Privilege Stack','₹50k trust fund · Learning without stakes')">
+        <span class="avatar-emoji">💎</span>
+        <div class="avatar-name">Privilege Stack</div>
+        <div class="avatar-detail">₹50k trust fund. Easy mode — but can you learn without real stakes?</div>
+        <div class="avatar-stat">Gold: <span>15,000</span> | Risk: <span>LOW</span></div>
+      </div>
+      <div class="avatar-card" onclick="selectAvatar(this,'🌍','International Wildcard','No credit history · Visa stress · Regulatory maze')">
+        <span class="avatar-emoji">🌍</span>
+        <div class="avatar-name">International Wildcard</div>
+        <div class="avatar-detail">No credit history in India. Navigate visa, forex, and regulatory chaos.</div>
+        <div class="avatar-stat">Gold: <span>3,000</span> | Challenge: <span>MAX</span></div>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <button class="btn-primary" onclick="startGame()">▶ Enter FinQuest World</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= GAME SCREEN ============= -->
+<div id="screen-game" class="screen">
+  <!-- HUD -->
+  <div class="game-hud">
+    <div class="hud-left">
+      <div class="avatar-mini" id="hud-avatar-emoji">🎒</div>
+      <div class="hud-stats">
+        <div class="hud-name" id="hud-avatar-name">NICK, LV.1</div>
+        <div class="hud-bars">
+          <div class="bar-row"><div class="bar-label">HP</div><div class="bar-bg"><div class="bar-fill bar-hp" id="bar-hp" style="width:80%"></div></div></div>
+          <div class="bar-row"><div class="bar-label">XP</div><div class="bar-bg"><div class="bar-fill bar-xp" id="bar-xp" style="width:25%"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="hud-center">
+      <div class="hud-coin" id="hud-gold">15,000</div>
+      <div class="hud-gem" id="hud-gems">50</div>
+      <div class="hud-quest-tag">⚔️ Quest: Learn to Budget! (0/3)</div>
+    </div>
+    <div class="hud-right">
+      <button class="hud-btn hud-ai-btn" onclick="openTutor()">🤖 AI Tutor</button>
+      <button class="hud-btn" onclick="showProfile()">👤 Profile</button>
+      <button class="hud-btn" onclick="showScreen('screen-landing')">🏠 Home</button>
+    </div>
+  </div>
+
+  <!-- GAME MAIN -->
+  <div class="game-main">
+    <!-- CHAT LOG -->
+    <div class="chat-log">
+      <div class="chat-log-header">📋 CHATS</div>
+      <div class="chat-log-messages" id="chat-log-msgs">
+        <div class="chat-msg quest"><div class="msg-sender">[Quest]</div>Learn to Budget! (0/3 tips)</div>
+        <div class="chat-msg tip"><div class="msg-sender">[Tip]</div>Track every expense.</div>
+        <div class="chat-msg tip"><div class="msg-sender">[Tip]</div>Prioritize needs over wants.</div>
+        <div class="chat-msg ai"><div class="msg-sender">[AI Tutor]</div>Click a building to start a module!</div>
+      </div>
+    </div>
+
+    <!-- WORLD MAP -->
+    <div class="world-area">
+      <div class="world-bg">
+        <div class="world-grid-overlay"></div>
+
+        <!-- River -->
+        <div class="river" style="width:60px;height:300px;left:48px;top:80px;transform:rotate(-15deg);opacity:0.7"></div>
+
+        <!-- Trees scattered -->
+        <div class="tree" style="left:30px;top:30px;animation-delay:0s">🌳</div>
+        <div class="tree" style="left:80px;top:15px;animation-delay:0.5s;font-size:1.2rem">🌲</div>
+        <div class="tree" style="left:150px;top:40px;animation-delay:1s">🌳</div>
+        <div class="tree" style="right:30px;top:30px;animation-delay:0.3s">🌳</div>
+        <div class="tree" style="right:80px;top:60px;animation-delay:0.8s;font-size:1.2rem">🌲</div>
+        <div class="tree" style="right:130px;top:20px;animation-delay:1.5s">🌳</div>
+        <div class="tree" style="left:60px;bottom:60px;animation-delay:0.6s">🌳</div>
+        <div class="tree" style="right:60px;bottom:80px;animation-delay:1.2s">🌳</div>
+        <div class="tree" style="left:200px;bottom:40px;animation-delay:0.2s;font-size:1.2rem">🌲</div>
+
+        <!-- Player character -->
+        <div class="player-char" id="player-char" style="left:48%;top:44%">🧑‍🎓</div>
+
+        <!-- ZONES -->
+        <div class="zones-container">
+
+          <!-- Budgeting City -->
+          <div class="zone-box" style="left:8%;top:18%;width:180px;height:170px" onclick="openBudgetingCity()">
+            <div class="zone-building">🏘️</div>
+            <div class="zone-label">Budgeting City</div>
+          </div>
+
+          <!-- Investment Tower -->
+          <div class="zone-box zone-locked" style="right:8%;top:10%;width:150px;height:190px" onclick="showToast('🔒 Unlock Investment Tower by completing Budgeting City!')">
+            <div class="zone-building">🏗️</div>
+            <div class="zone-label">Investment Tower</div>
+          </div>
+
+          <!-- Central Plaza -->
+          <div class="zone-box" style="left:50%;top:35%;transform:translateX(-50%);width:140px;height:130px" onclick="openQuiz()">
+            <div class="zone-building">⛲</div>
+            <div class="zone-label">Central Plaza</div>
+          </div>
+
+          <!-- Loan Bank -->
+          <div class="zone-box zone-locked" style="right:10%;bottom:8%;width:155px;height:165px" onclick="showToast('🔒 Unlock Loan Bank by reaching Level 5!')">
+            <div class="zone-building">🏛️</div>
+            <div class="zone-label">Loan Bank</div>
+          </div>
+
+          <!-- City Hall (quiz) -->
+          <div class="zone-box" style="right:28%;top:8%;width:130px;height:130px" onclick="openQuiz()">
+            <div class="zone-building">🏛️</div>
+            <div class="zone-label">City Hall / Civic Centre</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOTBAR -->
+  <div class="hotbar">
+    <div class="hotbar-tools">
+      <div class="tool-slot active" title="Budget Tracker"><div class="tool-icon">📊</div><div class="tool-name">Budget</div></div>
+      <div class="tool-slot" title="Discount Scanner"><div class="tool-icon">🏷️</div><div class="tool-name">Discount</div></div>
+      <div class="tool-slot" title="Expense Log"><div class="tool-icon">📱</div><div class="tool-name">Expenses</div></div>
+      <div class="tool-slot" title="Savings Flask"><div class="tool-icon">🏦</div><div class="tool-name">Savings</div></div>
+      <div class="tool-slot" title="Quest Compass"><div class="tool-icon">🧭</div><div class="tool-name">Quests</div></div>
+    </div>
+    <div class="hotbar-actions">
+      <button class="action-btn map" onclick="showToast('🗺️ Map view — coming soon!')">🗺️ MAP</button>
+      <button class="action-btn inventory" onclick="showToast('🎒 Inventory — coming soon!')">🎒 INVENTORY</button>
+      <button class="action-btn quests" onclick="openBudgetingCity()">📜 QUESTS</button>
+      <button class="action-btn menu" onclick="showScreen('screen-landing')">☰ MENU</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= PROFILE SCREEN ============= -->
+<div id="screen-profile" class="screen">
+  <div style="max-width:900px;width:100%;padding:2rem 2rem 4rem;">
+    <button class="profile-back" onclick="goBackFromProfile()">← Back to Game</button>
+    <div class="profile-grid">
+      <div>
+        <div class="profile-card">
+          <div class="profile-avatar-big" id="profile-avatar-big">🎒</div>
+          <div class="profile-username" id="profile-username">NICK</div>
+          <div class="profile-level" id="profile-level">Level 1 · Loan Leveraged</div>
+          <div class="profile-stats">
+            <div class="profile-stat-row"><span class="psr-label">Gold</span><span class="psr-value" id="ps-gold">₹15,000</span></div>
+            <div class="profile-stat-row"><span class="psr-label">Gems</span><span class="psr-value" id="ps-gems">50</span></div>
+            <div class="profile-stat-row"><span class="psr-label">XP</span><span class="psr-value">250 / 1000</span></div>
+            <div class="profile-stat-row"><span class="psr-label">Streak</span><span class="psr-value">3 days 🔥</span></div>
+            <div class="profile-stat-row"><span class="psr-label">Quests Done</span><span class="psr-value" id="ps-quests">0</span></div>
+            <div class="profile-stat-row"><span class="psr-label">Avatar Type</span><span class="psr-value" id="ps-avatar-type">Loan Leveraged</span></div>
+          </div>
+        </div>
+
+        <div class="profile-card" style="margin-top:1rem;">
+          <div class="achievements-title">🏆 Achievements</div>
+          <div class="badge-grid">
+            <div class="badge earned"><span class="badge-icon">🎮</span><div class="badge-name">First Quest</div></div>
+            <div class="badge"><span class="badge-icon">💰</span><div class="badge-name">Budget Master</div></div>
+            <div class="badge"><span class="badge-icon">📈</span><div class="badge-name">Investor</div></div>
+            <div class="badge"><span class="badge-icon">🏦</span><div class="badge-name">Debt Slayer</div></div>
+            <div class="badge"><span class="badge-icon">⚡</span><div class="badge-name">Streak 7</div></div>
+            <div class="badge"><span class="badge-icon">🧠</span><div class="badge-name">Quiz Ace</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="profile-card">
+          <div class="achievements-title">📚 Module Progress</div>
+          <div class="module-progress">
+            <div class="mod-row">
+              <div class="mod-label"><span>🏘️ Budgeting City</span><span id="budget-pct">0%</span></div>
+              <div class="mod-bar"><div class="mod-bar-fill" id="budget-fill" style="width:0%"></div></div>
+            </div>
+            <div class="mod-row">
+              <div class="mod-label"><span>🏗️ Investment Tower</span><span>0% — Locked</span></div>
+              <div class="mod-bar"><div class="mod-bar-fill" style="width:0%;background:#555"></div></div>
+            </div>
+            <div class="mod-row">
+              <div class="mod-label"><span>🏛️ Loan Bank</span><span>0% — Locked</span></div>
+              <div class="mod-bar"><div class="mod-bar-fill" style="width:0%;background:#555"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-card" style="margin-top:1rem;">
+          <div class="achievements-title">💡 50/30/20 Budget Health</div>
+          <div style="padding:1rem 0;">
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+              <div style="flex:1;min-width:100px;text-align:center;padding:1rem;background:rgba(229,57,53,0.1);border-radius:4px;border:1px solid rgba(229,57,53,0.3)">
+                <div style="font-family:var(--pixel);font-size:1rem;color:#ff6b6b;">35%</div>
+                <div style="font-family:var(--pixel);font-size:0.38rem;color:var(--text-muted);margin-top:5px;">NEEDS</div>
+              </div>
+              <div style="flex:1;min-width:100px;text-align:center;padding:1rem;background:rgba(100,150,255,0.1);border-radius:4px;border:1px solid rgba(100,150,255,0.3)">
+                <div style="font-family:var(--pixel);font-size:1rem;color:#93c5fd;">15%</div>
+                <div style="font-family:var(--pixel);font-size:0.38rem;color:var(--text-muted);margin-top:5px;">WANTS</div>
+              </div>
+              <div style="flex:1;min-width:100px;text-align:center;padding:1rem;background:rgba(76,175,80,0.1);border-radius:4px;border:1px solid rgba(76,175,80,0.3)">
+                <div style="font-family:var(--pixel);font-size:1rem;color:var(--green-light);">50%</div>
+                <div style="font-family:var(--pixel);font-size:0.38rem;color:var(--text-muted);margin-top:5px;">SAVINGS</div>
+              </div>
+            </div>
+            <p style="font-size:0.78rem;color:var(--text-muted);margin-top:1rem;line-height:1.6;">Play Budget Tetris in Budgeting City to update your real spending breakdown.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============= MODALS ============= -->
+
+<!-- Budgeting City Modal -->
+<div class="modal-overlay" id="modal-budgeting-city">
+  <div class="scene-window" style="max-width:600px;">
+    <div class="scene-header">
+      <div class="scene-title">🏘️ Budgeting City</div>
+      <button class="scene-close" onclick="closeModal('modal-budgeting-city')">✕</button>
+    </div>
+    <div style="padding:1.5rem;">
+      <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6;">Welcome to Budgeting City! Three modules await. Where do you want to go?</p>
+      <div style="display:grid;grid-template-columns:1fr;gap:1rem;">
+        <div class="choice-btn" onclick="closeModal('modal-budgeting-city');openTetris()">
+          <div>
+            <div class="choice-label">🧱 BUDGET TETRIS — Falling Expense Blocks</div>
+            <div class="choice-cost">Bonus Mini-Game · Catch income, dodge overspending. Real-time pressure!</div>
+          </div>
+          <div class="choice-meta" style="color:#69f0ae">🎮 PLAY</div>
+        </div>
+        <div class="choice-btn" onclick="closeModal('modal-budgeting-city');openDorms()">
+          <div>
+            <div class="choice-label">🏠 DORMS — Roommate Rent Chat</div>
+            <div class="choice-cost">Module 2: Student Discount Optimization · Split rent, handle UPI drama</div>
+          </div>
+          <div class="choice-meta">→ PLAY</div>
+        </div>
+        <div class="choice-btn" onclick="closeModal('modal-budgeting-city');openMarket()">
+          <div>
+            <div class="choice-label">🛒 MARKET — Personal Budget 50/30/20</div>
+            <div class="choice-cost">Module 1: Personal Budgeting · Drag & drop your ₹15k budget</div>
+          </div>
+          <div class="choice-meta">→ PLAY</div>
+        </div>
+        <div class="choice-btn" onclick="closeModal('modal-budgeting-city');openCafe()">
+          <div>
+            <div class="choice-label">☕ UNIV. CAFÉ — Expense Tracking</div>
+            <div class="choice-cost">Module 3: Scan receipts, track UPI chai bills, identify quick wins</div>
+          </div>
+          <div class="choice-meta">→ PLAY</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DORMS / Roommate Scene -->
+<div class="modal-overlay" id="modal-dorms">
+  <div class="scene-window">
+    <div class="scene-header">
+      <div class="scene-title">🏠 Dorms — Roommate Situation</div>
+      <button class="scene-close" onclick="closeModal('modal-dorms')">✕</button>
+    </div>
+    <div class="dorm-scene">
+      <div class="dorm-room">
+        <div class="dorm-illustration">🛏️<br>🪑💻</div>
+        <div class="dorm-dialogue">
+          <div class="dialogue-speaker">Roommate Rahul:</div>
+          <div class="dialogue-text" id="dorm-dialogue-text">"Hey yaar, so our PG rent is ₹10,000 this month. I was thinking — since I have the bigger side, maybe I pay ₹6,000 and you pay ₹4,000? Also Spotify Family is ₹149 — should we split it? Oh and I'm a bit short this month, can I pay my half on UPI next week?"</div>
+          <div class="decision-note" id="decision-note">[DECISION REQUIRED: Consider fairness, financial risk, and long-term roommate relationship.]</div>
+          <div class="choices-grid" id="dorm-choices">
+            <div class="choice-btn" onclick="dormChoice(0)">
+              <div>
+                <div class="choice-label">Option A: Agree to split ₹6k/₹4k + Spotify split</div>
+                <div class="choice-cost">You pay: ₹4,000 rent + ₹75 Spotify = ₹4,075/month</div>
+              </div>
+              <div class="choice-meta">-₹4,075</div>
+            </div>
+            <div class="choice-btn" onclick="dormChoice(1)">
+              <div>
+                <div class="choice-label">Option B: Equal split ₹5k each. Decline Spotify.</div>
+                <div class="choice-cost">Equal terms, no shared subscriptions, clear boundary</div>
+              </div>
+              <div class="choice-meta">-₹5,000</div>
+            </div>
+            <div class="choice-btn" onclick="dormChoice(2)">
+              <div>
+                <div class="choice-label">Option C: Equal split, use NoBroker discount code first</div>
+                <div class="choice-cost">Negotiate room price down 10% with landlord app, then split</div>
+              </div>
+              <div class="choice-meta">-₹4,500 (est.)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="outcome-panel" id="dorm-outcome">
+        <div class="outcome-title" id="outcome-title"></div>
+        <div class="outcome-text" id="outcome-text"></div>
+        <div class="outcome-rewards" id="outcome-rewards"></div>
+        <div style="margin-top:1rem;display:flex;gap:0.7rem;flex-wrap:wrap;">
+          <button class="budget-btn done" onclick="askTutor('Why is it risky to let my roommate delay UPI payment?')">🤖 Ask AI Tutor</button>
+          <button class="budget-btn" style="background:rgba(255,215,0,0.15);color:var(--gold);border:1px solid rgba(255,215,0,0.3)" onclick="closeModal('modal-dorms');openBudgetingCity()">← Back to City</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MARKET / Budget Mini-Game -->
+<div class="modal-overlay" id="modal-market">
+  <div class="scene-window" style="max-width:780px;">
+    <div class="scene-header">
+      <div class="scene-title">🛒 Market — Personal Budget 50/30/20</div>
+      <button class="scene-close" onclick="closeModal('modal-market')">✕</button>
+    </div>
+    <div class="budget-scene">
+      <div class="budget-header">
+        <div class="budget-goal">GOAL: Save 10,000 Coins this month</div>
+        <div class="budget-progress-bar"><div class="budget-progress-fill" id="budget-game-fill" style="width:0%"></div></div>
+        <div class="budget-progress-label" id="budget-game-label">0 / 110 XP</div>
+      </div>
+
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">You earn <strong style="color:var(--gold)">₹15,000/month</strong>. Drag expense cards into the right category (Needs / Wants / Savings) based on the 50/30/20 rule.</p>
+
+      <div class="budget-tracker">
+        <div class="budget-category" id="cat-needs" ondrop="dropExpense(event,'needs')" ondragover="allowDrop(event)">
+          <div class="category-name">NEEDS</div>
+          <div class="category-pct">50% · ₹7,500</div>
+          <div class="dropped-items" id="dropped-needs"></div>
+          <div class="category-total" id="total-needs">₹0</div>
+        </div>
+        <div class="budget-category" id="cat-wants" ondrop="dropExpense(event,'wants')" ondragover="allowDrop(event)">
+          <div class="category-name">WANTS</div>
+          <div class="category-pct">30% · ₹4,500</div>
+          <div class="dropped-items" id="dropped-wants"></div>
+          <div class="category-total" id="total-wants">₹0</div>
+        </div>
+        <div class="budget-category" id="cat-savings" ondrop="dropExpense(event,'savings')" ondragover="allowDrop(event)">
+          <div class="category-name">SAVINGS</div>
+          <div class="category-pct">20% · ₹3,000</div>
+          <div class="dropped-items" id="dropped-savings"></div>
+          <div class="category-total" id="total-savings">₹0</div>
+        </div>
+      </div>
+
+      <div class="expense-items-pool" id="expense-pool">
+        <!-- filled by JS -->
+      </div>
+
+      <div class="budget-actions">
+        <button class="budget-btn done" onclick="checkBudget()">✓ DONE</button>
+        <button class="budget-btn cancel" onclick="resetBudget()">✕ RESET</button>
+        <button class="budget-btn help" onclick="askTutor('Explain the 50/30/20 budgeting rule with an Indian student example')">? HELP</button>
+      </div>
+
+      <div class="budget-result" id="budget-result">
+        <div class="outcome-title" id="budget-result-title"></div>
+        <div id="budget-result-text" style="font-size:0.875rem;color:var(--text);line-height:1.7;margin-bottom:1rem;"></div>
+        <div style="display:flex;gap:0.7rem;flex-wrap:wrap;">
+          <button class="budget-btn done" onclick="askTutor('How can I optimize my budget further?')">🤖 Ask Tutor</button>
+          <button class="budget-btn" style="background:rgba(255,215,0,0.1);color:var(--gold);border:1px solid rgba(255,215,0,0.3)" onclick="resetBudget()">↺ Try Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CAFE / Expense Tracker -->
+<div class="modal-overlay" id="modal-cafe">
+  <div class="scene-window" style="max-width:600px;">
+    <div class="scene-header">
+      <div class="scene-title">☕ Univ. Café — Expense Tracking</div>
+      <button class="scene-close" onclick="closeModal('modal-cafe')">✕</button>
+    </div>
+    <div style="padding:1.5rem;">
+      <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6;">You're walking through campus. UPI notifications keep coming in. Track your day:</p>
+      <div id="expense-log" style="display:flex;flex-direction:column;gap:0.7rem;margin-bottom:1.5rem;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:1rem;background:rgba(0,0,0,0.3);border-radius:4px;margin-bottom:1rem;">
+        <div style="font-family:var(--pixel);font-size:0.45rem;color:var(--text-muted);">Daily Total:</div>
+        <div style="font-family:var(--pixel);font-size:0.7rem;color:var(--gold);" id="cafe-total">₹0</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.7rem;margin-bottom:1.5rem;">
+        <div style="text-align:center;padding:0.8rem;background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.2);border-radius:3px;">
+          <div style="font-family:var(--pixel);font-size:0.45rem;color:#ff8888;" id="cafe-food">Food: ₹0</div>
+        </div>
+        <div style="text-align:center;padding:0.8rem;background:rgba(100,150,255,0.1);border:1px solid rgba(100,150,255,0.2);border-radius:3px;">
+          <div style="font-family:var(--pixel);font-size:0.45rem;color:#93c5fd;" id="cafe-transport">Transport: ₹0</div>
+        </div>
+        <div style="text-align:center;padding:0.8rem;background:rgba(200,150,50,0.1);border:1px solid rgba(200,150,50,0.2);border-radius:3px;">
+          <div style="font-family:var(--pixel);font-size:0.45rem;color:#fbbf24;" id="cafe-misc">Misc: ₹0</div>
+        </div>
+      </div>
+      <p style="font-size:0.8rem;color:var(--text-muted);line-height:1.6;">💡 At this rate, you'd spend <span id="cafe-monthly" style="color:var(--gold);font-weight:600;">₹0</span>/month and <span id="cafe-annual" style="color:var(--gold);font-weight:600;">₹0</span>/year just on daily purchases.</p>
+      <button class="budget-btn help" style="margin-top:1rem;width:100%;" onclick="askTutor('What are quick wins to reduce daily expenses as an Indian student?')">🤖 Ask AI Tutor — Tips to Save More</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUIZ Modal (Civic Centre) -->
+<div class="modal-overlay" id="modal-quiz">
+  <div class="scene-window" style="max-width:600px;">
+    <div class="scene-header">
+      <div class="scene-title">🏛️ Civic Centre — Financial Quiz</div>
+      <button class="scene-close" onclick="closeModal('modal-quiz')">✕</button>
+    </div>
+    <div class="quiz-scene">
+      <div id="quiz-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============= AI TUTOR PANEL ============= -->
+<div id="screen-tutor">
+  <div class="tutor-header">
+    <div class="tutor-title">
+      <div class="tutor-icon">🤖</div>
+      <div>
+        <div class="tutor-name">AI Tutor</div>
+        <div class="tutor-sub">Socratic Guide · RAG-Powered</div>
+      </div>
+    </div>
+    <button class="tutor-close-btn" onclick="closeTutor()">✕</button>
+  </div>
+  <div class="tutor-messages" id="tutor-messages">
+    <div class="tutor-msg ai">
+      <div class="tutor-msg-sender">AI Tutor</div>
+      Namaste! I'm your Socratic financial guide. I won't give you direct answers — I'll help you discover them yourself through questions. What financial situation are you navigating today?
+    </div>
+  </div>
+  <div class="tutor-input-area">
+    <div class="tutor-quick-btns">
+      <button class="quick-btn" onclick="sendTutorMsg('Why did I overspend this month?')">Why did I overspend?</button>
+      <button class="quick-btn" onclick="sendTutorMsg('Explain 50/30/20 rule for ₹15k income')">50/30/20 rule</button>
+      <button class="quick-btn" onclick="sendTutorMsg('Should I pay rent or save first?')">Rent vs savings?</button>
+      <button class="quick-btn" onclick="sendTutorMsg('What is a UPI payment limit per day?')">UPI limits</button>
+    </div>
+    <div class="tutor-input-row">
+      <input class="tutor-input" id="tutor-input" type="text" placeholder="Ask anything about finance..." onkeydown="if(event.key==='Enter')sendTutorMsg()">
+      <button class="tutor-send-btn" id="tutor-send-btn" onclick="sendTutorMsg()">SEND →</button>
+    </div>
+  </div>
+</div>
+
+<!-- BUDGET TETRIS -->
+<div class="modal-overlay" id="modal-tetris">
+  <div class="scene-window" style="max-width:700px;">
+    <div class="scene-header">
+      <div class="scene-title">🧱 Budget Tetris — Expense Pressure!</div>
+      <button class="scene-close" onclick="tetrisStop();closeModal('modal-tetris')">✕</button>
+    </div>
+    <div class="tetris-wrap">
+      <div class="tetris-board-area">
+        <canvas class="tetris-canvas" id="tetris-canvas" width="200" height="400"></canvas>
+        <div class="tetris-btn-row">
+          <button class="tetris-btn start" id="tetris-start-btn" onclick="tetrisStart()">▶ START</button>
+          <button class="tetris-btn pause" id="tetris-pause-btn" onclick="tetrisPause()" style="display:none">⏸ PAUSE</button>
+          <button class="tetris-btn restart" onclick="tetrisRestart()">↺ RESTART</button>
+        </div>
+        <!-- Mobile D-pad -->
+        <div class="tetris-mobile-dpad" id="dpad">
+          <div class="dpad-row"><div class="dpad-btn" onclick="tetrisKey('up')">↻</div></div>
+          <div class="dpad-row">
+            <div class="dpad-btn" onclick="tetrisKey('left')">◀</div>
+            <div class="dpad-btn" onclick="tetrisKey('down')">▼</div>
+            <div class="dpad-btn" onclick="tetrisKey('right')">▶</div>
+          </div>
+        </div>
+      </div>
+      <div class="tetris-sidebar">
+        <div class="tetris-score-box">
+          <div class="tetris-score-label">SAVINGS SCORE</div>
+          <div class="tetris-score-val" id="tetris-score">0</div>
+        </div>
+        <div class="tetris-score-box" style="background:rgba(255,100,100,0.06);border-color:rgba(255,100,100,0.25)">
+          <div class="tetris-score-label">OVERSPEND RISK</div>
+          <div class="tetris-score-val" style="color:#ff8888;font-size:0.7rem" id="tetris-level">LOW</div>
+        </div>
+        <div class="tetris-next-box">
+          <div class="tetris-next-label">NEXT EXPENSE</div>
+          <canvas class="tetris-next-canvas" id="tetris-next" width="80" height="80"></canvas>
+        </div>
+        <div class="tetris-income-bar">
+          <div class="tetris-income-title">₹ MONTHLY BUDGET</div>
+          <div class="tetris-categories" id="tetris-cats">
+            <div class="tcat-row"><div class="tcat-label">Needs</div><div class="tcat-bar-bg"><div class="tcat-bar-fill" id="tc-needs" style="width:0%;background:#ef5350"></div></div><div class="tcat-val" id="tv-needs">₹0</div></div>
+            <div class="tcat-row"><div class="tcat-label">Wants</div><div class="tcat-bar-bg"><div class="tcat-bar-fill" id="tc-wants" style="width:0%;background:#42a5f5"></div></div><div class="tcat-val" id="tv-wants">₹0</div></div>
+            <div class="tcat-row"><div class="tcat-label">Savings</div><div class="tcat-bar-bg"><div class="tcat-bar-fill" id="tc-savings" style="width:0%;background:#66bb6a"></div></div><div class="tcat-val" id="tv-savings">₹0</div></div>
+          </div>
+        </div>
+        <div class="tetris-controls">
+          <div class="tetris-ctrl-title">CONTROLS</div>
+          <div class="tetris-ctrl-row"><span>← →</span> Move block</div>
+          <div class="tetris-ctrl-row"><span>↑</span> Rotate</div>
+          <div class="tetris-ctrl-row"><span>↓</span> Speed drop</div>
+          <div class="tetris-ctrl-row"><span>SPACE</span> Hard drop</div>
+          <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--text-muted);line-height:1.6;">Clear lines = clear debt! Each cleared row = +₹500 saved.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ STATE ============
+const state = {
+  avatar: { emoji: '🎒', name: 'Nick', type: 'Loan Leveraged' },
+  gold: 15000, gems: 50, level: 1, xp: 25, hp: 80,
+  questsDone: 0, budgetProgress: 0,
+  tutorOpen: false,
+  lastScreen: 'screen-game'
+};
+
+const dormOutcomes = [
+  {
+    title: '✅ Option A: Unequal Split + Spotify',
+    text: 'You agreed to ₹4,000 + ₹75 Spotify. You\'re saving ₹925/month vs equal split, but you accepted delayed UPI payment risk. Pro tip: always settle rent by the 1st. Delayed payments can strain friendships AND your cash flow planning. Consider asking Rahul to set a UPI auto-pay.',
+    xp: 30, gold: 0,
+    tutorHint: 'What happens if your roommate delays payment for 2 months in a row?'
+  },
+  {
+    title: '✅ Option B: Equal Split, No Spotify — Smart Boundary!',
+    text: 'Excellent choice! Equal splits avoid resentment. Declining shared subscriptions keeps expenses clean and predictable. Your ₹5,000 rent is fixed and traceable. You can always get your own Spotify Student plan for ₹59/month — much cheaper than ₹75 half.',
+    xp: 60, gold: 150,
+    tutorHint: 'Why is predictable fixed rent better for budgeting than variable arrangements?'
+  },
+  {
+    title: '🏆 Option C: Negotiate First — Expert Move!',
+    text: 'Using NoBroker or similar apps to negotiate rent before splitting is the highest-EV play. A 10% reduction on ₹10k saves ₹1,000/month = ₹12,000/year. Equal split after that is ₹4,500 each. This is real financial thinking: optimize the total, then divide fairly.',
+    xp: 100, gold: 300,
+    tutorHint: 'How does ₹500/month saved compound over 4 years of college at 7% interest?'
+  }
+];
+
+const expenses = [
+  { id: 'rent', icon: '🏠', name: 'Rent', amount: 5000, correct: 'needs' },
+  { id: 'groceries', icon: '🛒', name: 'Groceries', amount: 2000, correct: 'needs' },
+  { id: 'chai', icon: '☕', name: 'Daily Chai', amount: 900, correct: 'wants' },
+  { id: 'mobile', icon: '📱', name: 'Mobile Bill', amount: 299, correct: 'needs' },
+  { id: 'movie', icon: '🎬', name: 'Movie OTT', amount: 499, correct: 'wants' },
+  { id: 'savings', icon: '🏦', name: 'SIP Fund', amount: 2000, correct: 'savings' },
+  { id: 'transport', icon: '🚌', name: 'Bus/Ola', amount: 800, correct: 'needs' },
+  { id: 'gaming', icon: '🎮', name: 'Game Credits', amount: 300, correct: 'wants' },
+  { id: 'textbooks', icon: '📚', name: 'Textbooks', amount: 600, correct: 'needs' },
+  { id: 'gym', icon: '💪', name: 'Gym Fee', amount: 500, correct: 'wants' },
+  { id: 'emergency', icon: '🚨', name: 'Emergency', amount: 1000, correct: 'savings' },
+  { id: 'spotify', icon: '🎵', name: 'Spotify', amount: 59, correct: 'wants' }
+];
+
+const placed = { needs: [], wants: [], savings: [] };
+const totals = { needs: 0, wants: 0, savings: 0 };
+
+const cafeExpenses = [
+  { icon: '☕', name: 'Morning Chai', amount: 20, cat: 'food' },
+  { icon: '🚌', name: 'Bus to College', amount: 15, cat: 'transport' },
+  { icon: '📋', name: 'Xerox Notes', amount: 30, cat: 'misc' },
+  { icon: '🍱', name: 'Mess Lunch', amount: 60, cat: 'food' },
+  { icon: '📱', name: 'Data Recharge', amount: 23, cat: 'misc' },
+  { icon: '🍵', name: 'Evening Cutting', amount: 20, cat: 'food' },
+  { icon: '🚌', name: 'Bus Home', amount: 15, cat: 'transport' },
+  { icon: '🍕', name: 'Pizza Slice', amount: 80, cat: 'food' }
+];
+
+const quizQuestions = [
+  {
+    q: 'You earn ₹15,000/month as a student. Using the 50/30/20 rule, how much should go to SAVINGS?',
+    options: ['₹1,500 (10%)', '₹3,000 (20%)', '₹4,500 (30%)', '₹7,500 (50%)'],
+    correct: 1,
+    feedback: '✅ Correct! 20% of ₹15,000 = ₹3,000. The 50/30/20 rule: 50% needs, 30% wants, 20% savings. But remember — this is a guideline, not gospel. Your situation may need adjustments.'
+  },
+  {
+    q: 'Your roommate wants to delay UPI rent payment by 10 days "because salary is delayed." What\'s the BEST response?',
+    options: ['Sure, no problem yaar!', 'Pay my share now and ask them to pay ASAP with a fixed deadline', 'Refuse and demand they pay immediately', 'Offer to pay their share too and they can pay double next month'],
+    correct: 1,
+    feedback: '✅ Right! Setting a firm deadline (e.g., "by the 5th of next month") protects your friendship AND your finances. Covering their share (Option D) creates debt and resentment.'
+  },
+  {
+    q: 'A daily ₹50 chai + snack habit. How much does this cost annually?',
+    options: ['₹6,000', '₹12,000', '₹18,250', '₹24,000'],
+    correct: 2,
+    feedback: '✅ ₹50/day × 365 = ₹18,250! This is the "latte factor" — small daily expenses add up hugely. That\'s almost 1.2 months of rent for many Pune PG students!'
+  }
+];
+
+let currentQuizQ = 0;
+let quizAnswered = false;
+let tutorConversation = [];
+let isTutorLoading = false;
+
+// ============ SCREEN MANAGEMENT ============
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showAvatar() { showScreen('screen-avatar'); }
+function showProfile() {
+  state.lastScreen = document.querySelector('.screen.active')?.id || 'screen-game';
+  updateProfileUI();
+  showScreen('screen-profile');
+}
+function goBackFromProfile() { showScreen(state.lastScreen || 'screen-game'); }
+
+function selectAvatar(el, emoji, name, detail) {
+  document.querySelectorAll('.avatar-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  state.avatar = { emoji, name: name.split(' ')[0].toUpperCase(), type: name };
+  state.gold = emoji === '💎' ? 15000 : emoji === '📚' ? 500 : emoji === '💼' ? 800 : emoji === '🌍' ? 3000 : 2000;
+}
+
+function startGame() {
+  updateHUD();
+  showScreen('screen-game');
+  addChatMsg('quest', `[Quest] You are ${state.avatar.name} — ${state.avatar.type}. Start your financial adventure!`);
+  addChatMsg('tip', '[Tip] Click on Budgeting City to begin your first module!');
+}
+
+function updateHUD() {
+  document.getElementById('hud-avatar-emoji').textContent = state.avatar.emoji;
+  document.getElementById('hud-avatar-name').textContent = `${state.avatar.name}, LV.${state.level}`;
+  document.getElementById('hud-gold').textContent = state.gold.toLocaleString('en-IN');
+  document.getElementById('hud-gems').textContent = state.gems;
+  document.getElementById('bar-hp').style.width = state.hp + '%';
+  document.getElementById('bar-xp').style.width = (state.xp % 100) + '%';
+}
+
+function updateProfileUI() {
+  document.getElementById('profile-avatar-big').textContent = state.avatar.emoji;
+  document.getElementById('profile-username').textContent = state.avatar.name;
+  document.getElementById('profile-level').textContent = `Level ${state.level} · ${state.avatar.type}`;
+  document.getElementById('ps-gold').textContent = '₹' + state.gold.toLocaleString('en-IN');
+  document.getElementById('ps-gems').textContent = state.gems;
+  document.getElementById('ps-quests').textContent = state.questsDone;
+  document.getElementById('ps-avatar-type').textContent = state.avatar.type;
+  const bp = Math.min(100, state.budgetProgress);
+  document.getElementById('budget-fill').style.width = bp + '%';
+  document.getElementById('budget-pct').textContent = bp + '%';
+}
+
+// ============ MODALS ============
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function openBudgetingCity() { openModal('modal-budgeting-city'); }
+
+function openDorms() {
+  document.getElementById('dorm-outcome').classList.remove('show');
+  document.getElementById('dorm-choices').style.display = 'grid';
+  openModal('modal-dorms');
+}
+
+function dormChoice(i) {
+  const out = dormOutcomes[i];
+  document.getElementById('dorm-choices').style.display = 'none';
+  document.getElementById('outcome-title').textContent = out.title;
+  document.getElementById('outcome-text').textContent = out.text;
+  document.getElementById('outcome-rewards').innerHTML =
+    `<span class="reward-tag reward-xp">+${out.xp} XP</span>` +
+    (out.gold > 0 ? `<span class="reward-tag reward-gold">+₹${out.gold} Gold</span>` : '');
+  document.getElementById('dorm-outcome').classList.add('show');
+  state.xp += out.xp;
+  state.gold += out.gold;
+  state.questsDone++;
+  state.budgetProgress = Math.min(100, state.budgetProgress + 33);
+  updateHUD();
+  addChatMsg('ai', `[AI Tutor] ${out.tutorHint}`);
+  showToast(`+${out.xp} XP earned! 🎉`);
+}
+
+// ============ BUDGET MINI-GAME ============
+function openMarket() {
+  initBudgetGame();
+  openModal('modal-market');
+}
+
+function initBudgetGame() {
+  placed.needs = []; placed.wants = []; placed.savings = [];
+  totals.needs = 0; totals.wants = 0; totals.savings = 0;
+  updateBudgetTotals();
+  document.getElementById('budget-result').classList.remove('show');
+  document.getElementById('budget-game-fill').style.width = '0%';
+  document.getElementById('budget-game-label').textContent = '0 / 110 XP';
+
+  const pool = document.getElementById('expense-pool');
+  pool.innerHTML = '';
+  expenses.forEach(exp => {
+    const el = document.createElement('div');
+    el.className = 'expense-card';
+    el.id = 'exp-' + exp.id;
+    el.draggable = true;
+    el.innerHTML = `<div class="expense-icon">${exp.icon}</div><div class="expense-name">${exp.name}</div><div class="expense-amount">₹${exp.amount.toLocaleString('en-IN')}</div>`;
+    el.addEventListener('dragstart', e => { e.dataTransfer.setData('text', exp.id); el.classList.add('dragging'); });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    pool.appendChild(el);
+  });
+
+  ['needs','wants','savings'].forEach(cat => {
+    document.getElementById('dropped-'+cat).innerHTML = '';
+  });
+}
+
+function allowDrop(e) { e.preventDefault(); }
+function dropExpense(e, cat) {
+  e.preventDefault();
+  const id = e.dataTransfer.getData('text');
+  const exp = expenses.find(x => x.id === id);
+  if (!exp) return;
+  const el = document.getElementById('exp-' + id);
+  if (el && el.classList.contains('placed')) return;
+
+  // Remove from other cats if moved
+  ['needs','wants','savings'].forEach(c => {
+    const idx = placed[c].indexOf(id);
+    if (idx > -1) { placed[c].splice(idx,1); totals[c] -= exp.amount; }
+  });
+
+  placed[cat].push(id);
+  totals[cat] += exp.amount;
+  if (el) el.classList.add('placed');
+
+  updateBudgetTotals();
+  document.getElementById('dropped-'+cat).innerHTML += `<span class="mini-placed-item" title="${exp.name} ₹${exp.amount}">${exp.icon}</span>`;
+}
+
+function updateBudgetTotals() {
+  ['needs','wants','savings'].forEach(cat => {
+    document.getElementById('total-'+cat).textContent = '₹' + totals[cat].toLocaleString('en-IN');
+  });
+}
+
+function checkBudget() {
+  let correct = 0;
+  expenses.forEach(exp => {
+    ['needs','wants','savings'].forEach(cat => {
+      if (placed[cat].includes(exp.id) && cat === exp.correct) correct++;
+    });
+  });
+  const total = expenses.length;
+  const pct = Math.round((correct/total)*100);
+  const xpEarned = Math.round((correct/total)*110);
+
+  document.getElementById('budget-game-fill').style.width = pct + '%';
+  document.getElementById('budget-game-label').textContent = `${xpEarned} / 110 XP`;
+
+  const res = document.getElementById('budget-result');
+  res.classList.add('show');
+  document.getElementById('budget-result-title').textContent = pct >= 80 ? '🏆 Excellent Budget!' : pct >= 50 ? '👍 Good Effort!' : '📚 Keep Practicing!';
+  document.getElementById('budget-result-text').textContent = `You correctly categorized ${correct}/${total} expenses (${pct}%). ${pct >= 80 ? 'You understand the 50/30/20 rule well! Remember: for Indian students, ₹15k/month means ₹7,500 needs, ₹4,500 wants, ₹3,000 savings.' : 'Tip: Rent, groceries, mobile bill = NEEDS. Entertainment, eating out, gaming = WANTS. SIP, emergency fund = SAVINGS.'}`;
+
+  state.xp += xpEarned;
+  state.gold += xpEarned * 2;
+  state.questsDone++;
+  state.budgetProgress = Math.min(100, state.budgetProgress + pct/3);
+  updateHUD();
+  showToast(`+${xpEarned} XP · Budget Quest Complete!`);
+}
+
+function resetBudget() { initBudgetGame(); }
+
+// ============ CAFE / EXPENSE TRACKER ============
+function openCafe() {
+  const log = document.getElementById('expense-log');
+  log.innerHTML = '';
+  let total = 0, food = 0, transport = 0, misc = 0;
+
+  cafeExpenses.forEach((e, i) => {
+    setTimeout(() => {
+      total += e.amount;
+      if (e.cat === 'food') food += e.amount;
+      else if (e.cat === 'transport') transport += e.amount;
+      else misc += e.amount;
+
+      const el = document.createElement('div');
+      el.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:0.7rem 1rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:3px;font-size:0.85rem;';
+      el.innerHTML = `<span>${e.icon} ${e.name}</span><span style="font-family:var(--pixel);font-size:0.45rem;color:var(--gold)">-₹${e.amount}</span>`;
+      log.appendChild(el);
+
+      document.getElementById('cafe-total').textContent = '₹' + total;
+      document.getElementById('cafe-food').textContent = 'Food: ₹' + food;
+      document.getElementById('cafe-transport').textContent = 'Transport: ₹' + transport;
+      document.getElementById('cafe-misc').textContent = 'Misc: ₹' + misc;
+      document.getElementById('cafe-monthly').textContent = '₹' + (total * 30).toLocaleString('en-IN');
+      document.getElementById('cafe-annual').textContent = '₹' + (total * 365).toLocaleString('en-IN');
+    }, i * 400);
+  });
+
+  openModal('modal-cafe');
+}
+
+// ============ QUIZ ============
+function openQuiz() {
+  currentQuizQ = 0;
+  quizAnswered = false;
+  renderQuiz();
+  openModal('modal-quiz');
+}
+
+function renderQuiz() {
+  const q = quizQuestions[currentQuizQ];
+  const el = document.getElementById('quiz-content');
+  el.innerHTML = `
+    <p style="font-family:var(--pixel);font-size:0.4rem;color:var(--text-muted);margin-bottom:0.8rem;">Question ${currentQuizQ+1} of ${quizQuestions.length}</p>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-options">
+      ${q.options.map((opt,i) => `<button class="quiz-option" onclick="answerQuiz(${i})">${opt}</button>`).join('')}
+    </div>
+    <div class="quiz-feedback" id="quiz-feedback"></div>
+    <div id="quiz-next-row" style="display:none;margin-top:1rem;">
+      ${currentQuizQ < quizQuestions.length-1
+        ? `<button class="budget-btn done" onclick="nextQuizQ()">Next Question →</button>`
+        : `<button class="budget-btn done" onclick="closeModal('modal-quiz');showToast('🏆 Quiz Complete! +150 XP')">Finish Quiz!</button>`}
+    </div>
+  `;
+}
+
+function answerQuiz(i) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const q = quizQuestions[currentQuizQ];
+  const btns = document.querySelectorAll('.quiz-option');
+  btns.forEach((b,idx) => {
+    if (idx === q.correct) b.classList.add('correct');
+    else if (idx === i) b.classList.add('wrong');
+    b.disabled = true;
+  });
+  const fb = document.getElementById('quiz-feedback');
+  fb.textContent = q.feedback;
+  fb.className = 'quiz-feedback show ' + (i === q.correct ? 'good' : 'bad');
+  document.getElementById('quiz-next-row').style.display = 'block';
+  if (i === q.correct) { state.xp += 50; state.gold += 100; updateHUD(); showToast('+50 XP! Correct!'); }
+}
+
+function nextQuizQ() {
+  currentQuizQ++;
+  quizAnswered = false;
+  renderQuiz();
+}
+
+// ============ AI TUTOR ============
+function openTutor() {
+  document.getElementById('screen-tutor').classList.add('open');
+  state.tutorOpen = true;
+}
+function closeTutor() {
+  document.getElementById('screen-tutor').classList.remove('open');
+  state.tutorOpen = false;
+}
+
+function askTutor(msg) {
+  openTutor();
+  setTimeout(() => sendTutorMsg(msg), 200);
+}
+
+async function sendTutorMsg(prefill) {
+  const input = document.getElementById('tutor-input');
+  const msg = prefill || input.value.trim();
+  if (!msg || isTutorLoading) return;
+  input.value = '';
+
+  appendTutorMsg('user', 'You', msg);
+  tutorConversation.push({ role: 'user', content: msg });
+
+  isTutorLoading = true;
+  document.getElementById('tutor-send-btn').disabled = true;
+
+  const loadingEl = appendTutorMsg('ai loading', 'AI Tutor', 'Thinking...');
+
+  try {
+    const systemPrompt = `You are the FinQuest AI Tutor — a Socratic financial guide for Indian college students in Pune.
+
+RULES:
+1. NEVER give direct answers — always guide through questions (Socratic method)
+2. Keep responses SHORT (2-4 sentences + 1-2 questions max)
+3. Use Indian context: ₹ currency, UPI, PG rents (₹8-12k), chai (₹20-50), Pune student life
+4. Reference real Indian financial concepts: PPF, ELSS, 80C, SIP, NoBroker, Zerodha
+5. Be warm, not preachy. Like a smart senior who's been through this
+6. End every response with a thought-provoking question
+
+Student avatar: ${state.avatar.type} | Level: ${state.level} | Gold: ₹${state.gold}`;
+
+    const messages = [
+      ...tutorConversation.slice(-6)
+    ];
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages
+      })
+    });
+
+    const data = await resp.json();
+    const reply = data.content?.[0]?.text || 'Sorry, I had trouble connecting. Try again!';
+    loadingEl.className = 'tutor-msg ai';
+    loadingEl.innerHTML = `<div class="tutor-msg-sender">AI Tutor</div>${reply}`;
+    tutorConversation.push({ role: 'assistant', content: reply });
+    addChatMsg('ai', '[AI Tutor] ' + reply.substring(0, 60) + '...');
+  } catch (err) {
+    loadingEl.className = 'tutor-msg ai';
+    loadingEl.innerHTML = `<div class="tutor-msg-sender">AI Tutor</div>Hmm, I couldn't connect to my knowledge base. But let me ask you this: what do you think the answer might be based on what you already know about money management?`;
+  }
+
+  isTutorLoading = false;
+  document.getElementById('tutor-send-btn').disabled = false;
+  scrollTutorToBottom();
+}
+
+function appendTutorMsg(cls, sender, text) {
+  const msgs = document.getElementById('tutor-messages');
+  const el = document.createElement('div');
+  el.className = 'tutor-msg ' + cls;
+  el.innerHTML = `<div class="tutor-msg-sender">${sender}</div>${text}`;
+  msgs.appendChild(el);
+  scrollTutorToBottom();
+  return el;
+}
+
+function scrollTutorToBottom() {
+  const msgs = document.getElementById('tutor-messages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ============ CHAT LOG ============
+function addChatMsg(type, text) {
+  const log = document.getElementById('chat-log-msgs');
+  const el = document.createElement('div');
+  el.className = 'chat-msg ' + type;
+  el.textContent = text;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+  if (log.children.length > 20) log.removeChild(log.firstChild);
+}
+
+// ============ TOAST ============
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============ BUDGET TETRIS ============
+const TCOLS = 10, TROWS = 20, TSIZE = 20;
+let tetrisRunning = false, tetrisPaused = false, tetrisAnimId = null;
+let tetrisBoard, tetrisCurPiece, tetrisNextPiece, tetrisScore, tetrisLines, tetrisDropInterval, tetrisLastTime;
+let tetrisNeedsAmt = 0, tetrisWantsAmt = 0, tetrisSavingsAmt = 0;
+
+// Expense block types: [color, label, amount, category]
+const TETRIS_PIECES = [
+  { shape: [[1,1,1,1]], color: '#ef5350', label: 'RENT', amt: 5000, cat: 'needs' },
+  { shape: [[1,1],[1,1]], color: '#42a5f5', label: 'OTT', amt: 499, cat: 'wants' },
+  { shape: [[0,1,0],[1,1,1]], color: '#66bb6a', label: 'SIP', amt: 2000, cat: 'savings' },
+  { shape: [[1,1,0],[0,1,1]], color: '#ffa726', label: 'CHAI', amt: 600, cat: 'wants' },
+  { shape: [[0,1,1],[1,1,0]], color: '#ab47bc', label: 'BUS', amt: 800, cat: 'needs' },
+  { shape: [[1,0],[1,1],[0,1]], color: '#26c6da', label: 'BOOKS', amt: 600, cat: 'needs' },
+  { shape: [[1,1,1],[1,0,0]], color: '#d4e157', label: 'GROC', amt: 2000, cat: 'needs' },
+];
+
+function tetrisRandPiece() {
+  const p = TETRIS_PIECES[Math.floor(Math.random() * TETRIS_PIECES.length)];
+  return { shape: p.shape.map(r=>[...r]), color: p.color, label: p.label, amt: p.amt, cat: p.cat, x: Math.floor(TCOLS/2) - Math.floor(p.shape[0].length/2), y: 0 };
+}
+
+function tetrisInit() {
+  tetrisBoard = Array.from({length: TROWS}, () => Array(TCOLS).fill(null));
+  tetrisScore = 0; tetrisLines = 0; tetrisDropInterval = 800; tetrisLastTime = 0;
+  tetrisNeedsAmt = 0; tetrisWantsAmt = 0; tetrisSavingsAmt = 0;
+  tetrisCurPiece = tetrisRandPiece();
+  tetrisNextPiece = tetrisRandPiece();
+  updateTetrisUI();
+  drawTetris(); drawNextPiece();
+}
+
+function openTetris() { tetrisInit(); openModal('modal-tetris'); }
+
+function tetrisStart() {
+  if (tetrisRunning) return;
+  tetrisRunning = true; tetrisPaused = false;
+  document.getElementById('tetris-start-btn').style.display = 'none';
+  document.getElementById('tetris-pause-btn').style.display = 'inline-block';
+  tetrisLoop(0);
+}
+
+function tetrisPause() {
+  tetrisPaused = !tetrisPaused;
+  document.getElementById('tetris-pause-btn').textContent = tetrisPaused ? '▶ RESUME' : '⏸ PAUSE';
+  if (!tetrisPaused) tetrisLoop(tetrisLastTime);
+}
+
+function tetrisStop() {
+  tetrisRunning = false;
+  if (tetrisAnimId) cancelAnimationFrame(tetrisAnimId);
+}
+
+function tetrisRestart() {
+  tetrisStop();
+  tetrisInit();
+  document.getElementById('tetris-start-btn').style.display = 'inline-block';
+  document.getElementById('tetris-pause-btn').style.display = 'none';
+  document.getElementById('tetris-pause-btn').textContent = '⏸ PAUSE';
+}
+
+function tetrisLoop(time) {
+  if (!tetrisRunning || tetrisPaused) return;
+  const delta = time - tetrisLastTime;
+  if (delta > tetrisDropInterval) {
+    tetrisLastTime = time;
+    if (!tetrisMoveDown()) { tetrisLock(); tetrisClearLines(); tetrisSpawn(); }
+  }
+  drawTetris();
+  tetrisAnimId = requestAnimationFrame(tetrisLoop);
+}
+
+function tetrisCollide(piece, ox=0, oy=0, shape=null) {
+  const s = shape || piece.shape;
+  for (let r=0; r<s.length; r++) for (let c=0; c<s[r].length; c++) {
+    if (!s[r][c]) continue;
+    const nx = piece.x+c+ox, ny = piece.y+r+oy;
+    if (nx<0||nx>=TCOLS||ny>=TROWS) return true;
+    if (ny>=0 && tetrisBoard[ny][nx]) return true;
+  }
+  return false;
+}
+
+function tetrisMoveDown() {
+  if (tetrisCollide(tetrisCurPiece,0,1)) return false;
+  tetrisCurPiece.y++; return true;
+}
+
+function tetrisLock() {
+  const p = tetrisCurPiece;
+  p.shape.forEach((r,ri) => r.forEach((c,ci) => { if(c) { const y=p.y+ri; if(y>=0) tetrisBoard[y][p.x+ci]={color:p.color,label:p.label,cat:p.cat,amt:p.amt}; } }));
+  if (p.cat==='needs') tetrisNeedsAmt += p.amt;
+  else if (p.cat==='wants') tetrisWantsAmt += p.amt;
+  else tetrisSavingsAmt += p.amt;
+  updateTetrisUI();
+}
+
+function tetrisClearLines() {
+  let cleared = 0;
+  for (let r=TROWS-1; r>=0; r--) {
+    if (tetrisBoard[r].every(c=>c!==null)) {
+      tetrisBoard.splice(r,1);
+      tetrisBoard.unshift(Array(TCOLS).fill(null));
+      cleared++; r++;
+    }
+  }
+  if (cleared > 0) {
+    tetrisLines += cleared;
+    tetrisScore += cleared * 500;
+    tetrisDropInterval = Math.max(200, 800 - Math.floor(tetrisLines/3)*80);
+    updateTetrisUI();
+    showToast(`+₹${cleared*500} saved! ${cleared} line${cleared>1?'s':''} cleared! 🎉`);
+  }
+}
+
+function tetrisSpawn() {
+  tetrisCurPiece = tetrisNextPiece;
+  tetrisNextPiece = tetrisRandPiece();
+  drawNextPiece();
+  if (tetrisCollide(tetrisCurPiece)) { tetrisGameOver(); }
+}
+
+function tetrisGameOver() {
+  tetrisRunning = false;
+  const xpEarned = Math.min(150, Math.floor(tetrisScore / 100));
+  state.xp += xpEarned; state.gold += xpEarned * 2;
+  state.questsDone++; state.budgetProgress = Math.min(100, state.budgetProgress + 20);
+  updateHUD();
+  showToast(`Game Over! Score: ₹${tetrisScore} · +${xpEarned} XP`);
+  document.getElementById('tetris-start-btn').style.display = 'inline-block';
+  document.getElementById('tetris-pause-btn').style.display = 'none';
+  const ctx = document.getElementById('tetris-canvas').getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(0, TROWS*TSIZE/2-30, TCOLS*TSIZE, 60);
+  ctx.fillStyle = '#FFD700'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('GAME OVER', TCOLS*TSIZE/2, TROWS*TSIZE/2-8);
+  ctx.fillStyle = '#81C784'; ctx.font = '11px monospace';
+  ctx.fillText('Score: ₹' + tetrisScore, TCOLS*TSIZE/2, TROWS*TSIZE/2+12);
+}
+
+function tetrisRotate() {
+  const s = tetrisCurPiece.shape;
+  const rotated = s[0].map((_,i) => s.map(r=>r[i]).reverse());
+  if (!tetrisCollide(tetrisCurPiece, 0, 0, rotated)) tetrisCurPiece.shape = rotated;
+}
+
+function tetrisKey(dir) {
+  if (!tetrisRunning || tetrisPaused) return;
+  if (dir==='left' && !tetrisCollide(tetrisCurPiece,-1,0)) tetrisCurPiece.x--;
+  else if (dir==='right' && !tetrisCollide(tetrisCurPiece,1,0)) tetrisCurPiece.x++;
+  else if (dir==='down') { if(!tetrisMoveDown()) { tetrisLock(); tetrisClearLines(); tetrisSpawn(); } }
+  else if (dir==='up') tetrisRotate();
+  else if (dir==='drop') { while(tetrisMoveDown()){} tetrisLock(); tetrisClearLines(); tetrisSpawn(); }
+  drawTetris();
+}
+
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('modal-tetris').classList.contains('open')) return;
+  if (e.key==='ArrowLeft') { e.preventDefault(); tetrisKey('left'); }
+  else if (e.key==='ArrowRight') { e.preventDefault(); tetrisKey('right'); }
+  else if (e.key==='ArrowDown') { e.preventDefault(); tetrisKey('down'); }
+  else if (e.key==='ArrowUp') { e.preventDefault(); tetrisKey('up'); }
+  else if (e.key===' ') { e.preventDefault(); tetrisKey('drop'); }
+});
+
+function drawTetris() {
+  const canvas = document.getElementById('tetris-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#050d18'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 0.5;
+  for(let r=0;r<TROWS;r++) { ctx.beginPath(); ctx.moveTo(0,r*TSIZE); ctx.lineTo(TCOLS*TSIZE,r*TSIZE); ctx.stroke(); }
+  for(let c=0;c<TCOLS;c++) { ctx.beginPath(); ctx.moveTo(c*TSIZE,0); ctx.lineTo(c*TSIZE,TROWS*TSIZE); ctx.stroke(); }
+  // Board
+  tetrisBoard.forEach((row,r) => row.forEach((cell,c) => {
+    if (!cell) return;
+    drawBlock(ctx, c, r, cell.color, cell.label);
+  }));
+  // Ghost piece
+  if (tetrisRunning && !tetrisPaused) {
+    let ghost = {...tetrisCurPiece, shape: tetrisCurPiece.shape.map(r=>[...r])};
+    while (!tetrisCollide(ghost,0,1)) ghost.y++;
+    ghost.shape.forEach((row,r) => row.forEach((c,ci) => {
+      if (!c) return;
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fillRect((ghost.x+ci)*TSIZE+1, (ghost.y+r)*TSIZE+1, TSIZE-2, TSIZE-2);
+    }));
+  }
+  // Current piece
+  if (tetrisCurPiece) {
+    tetrisCurPiece.shape.forEach((row,r) => row.forEach((c,ci) => {
+      if (!c) return;
+      drawBlock(ctx, tetrisCurPiece.x+ci, tetrisCurPiece.y+r, tetrisCurPiece.color, tetrisCurPiece.label);
+    }));
+  }
+  // Not started overlay
+  if (!tetrisRunning) {
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#FFD700'; ctx.font='bold 12px monospace'; ctx.textAlign='center';
+    ctx.fillText('BUDGET TETRIS', canvas.width/2, canvas.height/2-20);
+    ctx.fillStyle='#81C784'; ctx.font='10px monospace';
+    ctx.fillText('Press START', canvas.width/2, canvas.height/2+5);
+    ctx.fillStyle='#a0926e'; ctx.font='9px monospace';
+    ctx.fillText('Clear lines = Save money!', canvas.width/2, canvas.height/2+25);
+  }
+}
+
+function drawBlock(ctx, x, y, color, label) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x*TSIZE+1, y*TSIZE+1, TSIZE-2, TSIZE-2);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(x*TSIZE+1, y*TSIZE+1, TSIZE-2, 3);
+  ctx.fillRect(x*TSIZE+1, y*TSIZE+1, 3, TSIZE-2);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(x*TSIZE+TSIZE-3, y*TSIZE+1, 2, TSIZE-2);
+  ctx.fillRect(x*TSIZE+1, y*TSIZE+TSIZE-3, TSIZE-2, 2);
+  if (TSIZE >= 18 && label) {
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '5px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(label.substring(0,4), x*TSIZE+TSIZE/2, y*TSIZE+TSIZE/2+2);
+  }
+}
+
+function drawNextPiece() {
+  const canvas = document.getElementById('tetris-next');
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#050d18'; ctx.fillRect(0,0,80,80);
+  if (!tetrisNextPiece) return;
+  const s = tetrisNextPiece.shape, bs = 14;
+  const ox = Math.floor((4-s[0].length)/2), oy = Math.floor((4-s.length)/2);
+  s.forEach((row,r) => row.forEach((c,ci) => {
+    if (!c) return;
+    ctx.fillStyle = tetrisNextPiece.color;
+    ctx.fillRect((ox+ci)*bs+5, (oy+r)*bs+5, bs-1, bs-1);
+  }));
+  ctx.fillStyle = '#a0926e'; ctx.font = '7px monospace'; ctx.textAlign = 'center';
+  ctx.fillText(tetrisNextPiece.label, 40, 72);
+}
+
+function updateTetrisUI() {
+  document.getElementById('tetris-score').textContent = '₹' + tetrisScore.toLocaleString('en-IN');
+  const risk = tetrisLines < 3 ? 'LOW' : tetrisLines < 8 ? 'MEDIUM' : 'HIGH';
+  document.getElementById('tetris-level').textContent = risk;
+  document.getElementById('tetris-level').style.color = risk==='LOW'?'#66bb6a':risk==='MEDIUM'?'#ffa726':'#ef5350';
+  const total = tetrisNeedsAmt + tetrisWantsAmt + tetrisSavingsAmt || 1;
+  document.getElementById('tc-needs').style.width = Math.min(100,(tetrisNeedsAmt/15000)*100)+'%';
+  document.getElementById('tc-wants').style.width = Math.min(100,(tetrisWantsAmt/4500)*100)+'%';
+  document.getElementById('tc-savings').style.width = Math.min(100,(tetrisSavingsAmt/3000)*100)+'%';
+  document.getElementById('tv-needs').textContent = '₹'+tetrisNeedsAmt.toLocaleString('en-IN');
+  document.getElementById('tv-wants').textContent = '₹'+tetrisWantsAmt.toLocaleString('en-IN');
+  document.getElementById('tv-savings').textContent = '₹'+tetrisSavingsAmt.toLocaleString('en-IN');
+}
+
+// ============ INIT ============
+function init() {
+  initBudgetGame();
+  updateHUD();
+  // Animate player position randomly
+  const player = document.getElementById('player-char');
+  if (player) {
+    player.style.left = (40 + Math.random()*15) + '%';
+    player.style.top = (38 + Math.random()*10) + '%';
+  }
+}
+
+// World click to move player
+document.querySelectorAll('.world-bg').forEach(area => {
+  area.addEventListener('click', e => {
+    if (e.target.closest('.zone-box')) return;
+    const rect = area.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
+    const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
+    const player = document.getElementById('player-char');
+    if (player) {
+      player.style.left = (parseFloat(x)-2) + '%';
+      player.style.top = (parseFloat(y)-4) + '%';
+    }
+  });
+});
+
+init();
+</script>
+</body>
+</html>
