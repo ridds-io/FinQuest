@@ -234,12 +234,13 @@ export default function GameView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: msg,
-          gameState: {
-            gold: state.gold,
-            level: state.level,
-            avatar: state.avatar,
-            xp: state.xp,
-          },
+          gameState: { gold: state.gold, level: state.level, avatar: state.avatar, xp: state.xp },
+          history: tutorMessages
+            .slice(-6)  // last 6 messages = 3 exchanges, enough context without bloating
+            .map(m => ({
+              role: m.role === 'user' ? 'user' : 'assistant',
+              content: m.content,
+            })),
         }),
       });
       const data = await res.json();
