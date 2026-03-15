@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
+import {
+  QuestSidebar,
+  QUEST_DEFINITIONS,
+  INITIAL_TIPS,
+  makeTutorEntry,
+  type SidebarEntry,
+} from '@/components/QuestSidebar';
 
 const GameCanvas = dynamic(() => import('@/components/GameCanvas'), { ssr: false });
 const BudgetTetris = dynamic(
@@ -67,10 +75,9 @@ function saveState(state: ReturnType<typeof loadState>) {
 export default function GameView() {
   const [screen, setScreen] = useState<'avatar' | 'game'>('avatar');
   const [state, setState] = useState(loadState);
-  const [chatLog, setChatLog] = useState<Array<{ type: string; text: string }>>([
-    { type: 'quest', text: 'Learn to Budget! (0/3 tips)' },
-    { type: 'tip', text: 'Track every expense.' },
-    { type: 'ai', text: 'Click a building to start a module!' },
+  const [sidebarEntries, setSidebarEntries] = useState<SidebarEntry[]>([
+    ...QUEST_DEFINITIONS,
+    ...INITIAL_TIPS,
   ]);
   const [toast, setToast] = useState('');
   const [modal, setModal] = useState<string | null>(null);
@@ -102,8 +109,18 @@ export default function GameView() {
     setTimeout(() => setToast(''), 2500);
   }, []);
 
-  const addChat = useCallback((type: string, text: string) => {
-    setChatLog((prev) => [...prev.slice(-19), { type, text }]);
+  const addTutorToSidebar = useCallback((text: string) => {
+    setSidebarEntries((prev) => [...prev, makeTutorEntry(text)]);
+  }, []);
+
+  const markQuestStep = useCallback((questId: string, stepIndex: number) => {
+    setSidebarEntries((prev) =>
+      prev.map((e) => {
+        if (e.kind !== 'quest' || e.id !== questId) return e;
+        const steps = e.steps.map((s, i) => (i === stepIndex ? { ...s, done: true } : s));
+        return { ...e, steps };
+      }),
+    );
   }, []);
 
   const updateGold = useCallback((delta: number) => {
@@ -121,8 +138,16 @@ export default function GameView() {
 
   const startGame = () => {
     setScreen('game');
-    addChat('quest', `You are ${state.avatar.name} — ${state.avatar.type}. Start your adventure!`);
-    addChat('tip', 'Click Budgeting City to begin your first module!');
+  };
+
+  const handleLogout = async () => {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
   const fetchDormScenario = async () => {
@@ -168,6 +193,11 @@ export default function GameView() {
     setModal('dorms');
   };
 
+  const openBudgetingCity = () => {
+    setModal('budgeting-city');
+    markQuestStep('q-budget-basics', 0);
+  };
+
   const dormChoice = (i: number) => {
     if (!dormScenario) return;
     const cost = dormScenario.costs[i] ?? 0;
@@ -188,7 +218,7 @@ export default function GameView() {
       gold: out.gold ?? 0,
     });
     showToast(`+${xp} XP earned! 🎉`);
-    addChat('ai', 'Ask the AI Tutor: "Why is it risky to let my roommate delay UPI payment?"');
+    markQuestStep('q-roommate', 1);
   };
 
   const sendTutor = async (prefill?: string) => {
@@ -215,7 +245,9 @@ export default function GameView() {
       const data = await res.json();
       const reply = data.question || 'I couldn’t connect. Try again!';
       setTutorMessages((m) => [...m, { role: 'ai', content: reply }]);
-      addChat('ai', reply.substring(0, 60) + '...');
+      addTutorToSidebar(reply);
+      markQuestStep('q-budget-basics', 2);
+      markQuestStep('q-roommate', 2);
     } catch {
       setTutorMessages((m) => [
         ...m,
@@ -267,117 +299,186 @@ export default function GameView() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#16213e]">
-      {/* HUD */}
-      <header className="sticky top-0 z-50 flex items-center justify-between flex-wrap gap-2 bg-[var(--panel)] border-b-2 border-[var(--panel-border)] px-4 py-2">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 border-2 border-gold rounded flex items-center justify-center text-xl bg-black/50">
-            {state.avatar.emoji}
-          </div>
-          <div>
-            <div className="font-pixel text-gold text-xs">{state.avatar.name}, LV.{state.level}</div>
-            <div className="flex gap-1">
-              <div className="w-20 h-1.5 bg-black/50 rounded overflow-hidden">
-                <div className="h-full bg-[var(--hp-red)]" style={{ width: `${state.hp}%` }} />
-              </div>
-              <div className="w-20 h-1.5 bg-black/50 rounded overflow-hidden">
-                <div className="h-full bg-[var(--xp-blue)]" style={{ width: `${state.xp % 100}%` }} />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="font-pixel text-gold text-sm">🪙 {state.gold.toLocaleString('en-IN')}</span>
-          <span className="font-pixel text-emerald-300 text-sm">💎 {state.gems}</span>
-          <span className="hidden sm:inline font-pixel text-xs bg-yellow-500/10 border border-yellow-500/30 px-2 py-1 rounded">
-            ⚔️ Quest: Learn to Budget! ({state.questsDone}/3)
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setTutorOpen(true)}
-            className="font-pixel text-xs bg-green/20 border border-green/50 text-[var(--green-light)] px-3 py-1.5 rounded hover:bg-green/30"
-          >
-            🤖 AI Tutor
-          </button>
-          <Link href="/profile" className="font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-gold hover:text-gold">
-            👤 Profile
-          </Link>
-          <Link href="/" className="font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-gold hover:text-gold">
-            🏠 Home
-          </Link>
-        </div>
-      </header>
-
+    <div className="min-h-screen flex flex-col bg-[#16213e] relative">
       <div className="flex-1 flex min-h-0">
-        {/* Chat log - hidden on small */}
-        <aside className="hidden md:flex w-56 flex-col bg-[rgba(5,15,10,0.92)] border-r border-green/30">
-          <div className="font-pixel text-xs text-[var(--green-light)] p-3 border-b border-green/20">📋 CHATS</div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
-            {chatLog.map((m, i) => (
-              <div
-                key={i}
-                className={`text-xs rounded px-2 py-1 ${
-                  m.type === 'quest' ? 'text-yellow-400 bg-yellow-500/10 border-l-2 border-yellow-500' :
-                  m.type === 'tip' ? 'text-[var(--green-light)] bg-green/10 border-l-2 border-green' :
-                  'text-[var(--blue-light)] bg-blue-500/10 border-l-2 border-blue-400'
-                }`}
-              >
-                {m.text}
-              </div>
-            ))}
-          </div>
-        </aside>
+        <QuestSidebar
+          entries={sidebarEntries}
+          questsDone={sidebarEntries.filter(
+            (e) => e.kind === 'quest' && e.steps.every((s) => s.done),
+          ).length}
+          onAskTutor={(q) => {
+            setTutorOpen(true);
+            setTimeout(() => sendTutor(q), 100);
+          }}
+        />
 
-        {/* World + Phaser */}
         <main className="flex-1 relative min-h-[500px] bg-[#2d5a2d]">
           <GameCanvas />
-          {/* Zone overlays - clickable */}
-          <div className="absolute inset-0 pointer-events-none sm:pointer-events-auto">
-            <div className="absolute left-[8%] top-[18%] w-36 h-40 sm:w-44 sm:h-44 flex flex-col items-center justify-end pb-2 rounded border-2 border-gold/30 hover:border-gold hover:bg-gold/10 cursor-pointer transition pointer-events-auto"
-              onClick={() => setModal('budgeting-city')}
-            >
-              <span className="text-4xl drop-shadow">🏘️</span>
-              <span className="font-pixel text-[10px] text-white bg-black/50 px-2 py-1 rounded mt-1">Budgeting City</span>
+
+          <div className="absolute inset-0 pointer-events-none z-10">
+            <div className="absolute top-4 left-4 z-20 pointer-events-none">
+              <div className="border-4 border-[#1a1a1a] bg-[rgba(20,20,20,0.85)] rounded-lg p-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2">
+                <div className="w-12 h-12 bg-green-800 border-2 border-gray-600 rounded flex items-center justify-center text-2xl">
+                  {state.avatar.emoji}
+                </div>
+                <div>
+                  <div className="font-pixel text-[9px] text-[var(--text)] uppercase mb-1">
+                    {state.avatar.name}, LV.{state.level}
+                  </div>
+                  <div className="flex gap-1 mb-1">
+                    {Array.from({ length: 10 }).map((_, i) => {
+                      const filled = (state.hp / 10) > i;
+                      return (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <span key={i}>{filled ? '❤️' : '🖤'}</span>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-1">
+                    {Array.from({ length: 10 }).map((_, i) => {
+                      const filled = ((state.xp % 100) / 10) > i;
+                      return (
+                        // eslint-disable-next-line react/no-array-index-key
+                        <span key={i}>{filled ? '💎' : '◇'}</span>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="absolute right-[8%] top-[10%] w-32 h-44 flex flex-col items-center justify-end pb-2 rounded border-2 border-gold/20 opacity-70 cursor-pointer pointer-events-auto"
-              onClick={() => showToast('🔒 Unlock Investment Tower by completing Budgeting City!')}
-            >
-              <span className="text-4xl">🏗️</span>
-              <span className="font-pixel text-[10px] text-white bg-black/50 px-2 py-1 rounded mt-1">Investment Tower</span>
+
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+              <div
+                className="font-pixel text-2xl text-white"
+                style={{
+                  textShadow:
+                    '3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',
+                }}
+              >
+                FinQuest
+              </div>
             </div>
-            <div className="absolute left-1/2 -translate-x-1/2 top-[35%] w-32 h-32 flex flex-col items-center justify-end pb-2 rounded border-2 border-gold/30 hover:border-gold hover:bg-gold/10 cursor-pointer transition pointer-events-auto"
-              onClick={() => showToast('Central Plaza — Quiz coming soon!')}
-            >
-              <span className="text-4xl">⛲</span>
-              <span className="font-pixel text-[10px] text-white bg-black/50 px-2 py-1 rounded mt-1">Central Plaza</span>
+
+            <div className="absolute top-4 right-4 z-20 pointer-events-none">
+              <div className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-pixel text-[9px] text-[#FFD700] uppercase space-y-1 pointer-events-auto">
+                <div>🪙 COINS: {state.gold.toLocaleString('en-IN')}</div>
+                <div>💎 TOKENS: {state.gems}</div>
+                <button
+                  onClick={handleLogout}
+                  className="mt-1 w-full font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-red-400 hover:text-red-300 transition-all"
+                >
+                  🚪 Logout
+                </button>
+              </div>
+            </div>
+
+            <div className="absolute top-28 right-4 z-20 pointer-events-none">
+              <button
+                onClick={() => setTutorOpen(true)}
+                className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 pointer-events-auto hover:shadow-none hover:translate-y-[4px] transition-all"
+              >
+                <span>🤖</span>
+                <span className="font-pixel text-[9px] text-green-400">AI TUTOR</span>
+              </button>
+            </div>
+
+            <div className="absolute bottom-4 right-4 z-20 pointer-events-none">
+              <div className="flex flex-row gap-2 pointer-events-auto">
+                {[
+                  { label: 'MAP', icon: '🗺️', onClick: () => showToast('🗺️ Map — coming soon!') },
+                  { label: 'INVENTORY', icon: '🎒', onClick: () => showToast('🎒 Inventory — coming soon!') },
+                  { label: 'QUESTS', icon: '📜', onClick: () => setModal('budgeting-city') },
+                  { label: 'MENU', icon: '☰', onClick: () => (window.location.href = '/') },
+                ].map((btn) => (
+                  <button
+                    key={btn.label}
+                    onClick={btn.onClick}
+                    className="w-[52px] h-[52px] border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-pixel text-[8px] text-[var(--text-muted)] flex flex-col items-center justify-center gap-0.5 uppercase hover:bg-[rgba(255,215,0,0.1)] hover:text-[#FFD700] hover:shadow-none hover:translate-y-[4px] transition-all"
+                  >
+                    <span>{btn.icon}</span>
+                    <span>{btn.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="absolute inset-0 pointer-events-none sm:pointer-events-auto">
+              <div
+                style={{ position: 'absolute', left: '8%', top: '18%' }}
+                onClick={openBudgetingCity}
+                className="pointer-events-auto cursor-pointer"
+              >
+                <Image
+                  src="/sprites/buildings/budgeting-city.png"
+                  alt="Budgeting City"
+                  width={180}
+                  height={200}
+                  style={{ imageRendering: 'pixelated' }}
+                />
+                <span className="font-pixel text-[9px] text-[var(--text)] block text-center mt-1">
+                  Budgeting City
+                </span>
+              </div>
+              <div
+                style={{ position: 'absolute', left: '55%', top: '12%' }}
+                onClick={() =>
+                  showToast('🔒 Unlock Investment Tower by completing Budgeting City!')
+                }
+                className="pointer-events-auto cursor-pointer opacity-80"
+              >
+                <Image
+                  src="/sprites/buildings/investment-tower.png"
+                  alt="Investment Tower"
+                  width={160}
+                  height={190}
+                  style={{ imageRendering: 'pixelated' }}
+                />
+                <span className="font-pixel text-[9px] text-[var(--text)] block text-center mt-1">
+                  Investment Tower
+                </span>
+              </div>
+              <div
+                style={{ position: 'absolute', left: '35%', top: '30%' }}
+                onClick={() => showToast('Central Plaza — Quiz coming soon!')}
+                className="pointer-events-auto cursor-pointer"
+              >
+                <Image
+                  src="/sprites/buildings/central-plaza.png"
+                  alt="Central Plaza"
+                  width={170}
+                  height={190}
+                  style={{ imageRendering: 'pixelated' }}
+                />
+                <span className="font-pixel text-[9px] text-[var(--text)] block text-center mt-1">
+                  Central Plaza
+                </span>
+              </div>
+
+              {[
+                { src: '/sprites/environment/tree-1.png', left: '5%', top: '60%', delay: '0s' },
+                { src: '/sprites/environment/tree-2.png', left: '20%', top: '55%', delay: '0.4s' },
+                { src: '/sprites/environment/tree-1.png', left: '70%', top: '65%', delay: '0.7s' },
+                { src: '/sprites/environment/tree-2.png', left: '85%', top: '50%', delay: '1.1s' },
+              ].map((t) => (
+                <Image
+                  key={`${t.src}-${t.left}-${t.top}`}
+                  src={t.src}
+                  width={48}
+                  height={64}
+                  alt=""
+                  style={{
+                    position: 'absolute',
+                    left: t.left,
+                    top: t.top,
+                    imageRendering: 'pixelated',
+                    animation: `treeSway 3s ease-in-out ${t.delay} infinite`,
+                  }}
+                />
+              ))}
             </div>
           </div>
         </main>
       </div>
-
-      {/* Hotbar */}
-      <footer className="flex items-center justify-between flex-wrap gap-2 bg-[var(--panel)] border-t-2 border-[var(--panel-border)] px-4 py-2">
-        <div className="flex gap-2">
-          {['📊 Budget', '🏷️ Discount', '📱 Expenses', '🏦 Savings', '🧭 Quests'].map((label, i) => (
-            <button
-              key={label}
-              onClick={() => { hotbarActive.current = i; }}
-              className={`w-12 h-12 flex flex-col items-center justify-center rounded border-2 text-lg transition ${
-                hotbarActive.current === i ? 'border-gold bg-gold/15 shadow-lg shadow-gold/20' : 'border-white/20 bg-black/50 hover:border-gold/50'
-              }`}
-            >
-              <span className="text-xs font-pixel text-[var(--text-muted)] hidden sm:block">{label.split(' ')[0]}</span>
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => showToast('🗺️ Map — coming soon!')} className="font-pixel text-xs bg-blue-500/20 text-blue-200 border border-blue-500/40 px-3 py-1.5 rounded">🗺️ MAP</button>
-          <button onClick={() => showToast('🎒 Inventory — coming soon!')} className="font-pixel text-xs bg-amber-500/20 text-amber-200 border border-amber-500/40 px-3 py-1.5 rounded">🎒 INVENTORY</button>
-          <button onClick={() => setModal('budgeting-city')} className="font-pixel text-xs bg-green/20 text-[var(--green-light)] border border-green/40 px-3 py-1.5 rounded">📜 QUESTS</button>
-          <Link href="/" className="font-pixel text-xs bg-gray-500/20 text-gray-300 border border-gray-500/40 px-3 py-1.5 rounded">☰ MENU</Link>
-        </div>
-      </footer>
 
       {/* Modal: Budgeting City */}
       {modal === 'budgeting-city' && (
@@ -493,12 +594,13 @@ export default function GameView() {
                 questsDone: s.questsDone + 1,
                 budgetProgress: Math.min(100, s.budgetProgress + 20),
               }));
-              addChat(
-                'quest',
-                `Budget Tetris: cleared ${clearedLines} line(s), saved virtual ₹${finalScore.toLocaleString(
-                  'en-IN',
-                )}.`,
+              addTutorToSidebar(
+                `Budget Tetris: cleared ${clearedLines} line(s), saved virtual ₹${finalScore.toLocaleString('en-IN')}.`
               );
+              if (clearedLines >= 3) {
+                markQuestStep('q-tetris', 0);
+                markQuestStep('q-tetris', 1);
+              }
               showToast(`Game Over! Score: ₹${finalScore} · +${xpEarned} XP`);
             }
           }}
@@ -516,7 +618,7 @@ export default function GameView() {
               questsDone: s.questsDone + 1,
               budgetProgress: Math.min(100, s.budgetProgress + 33),
             }));
-            addChat('quest', `Market: categorized ${correct}/12 expenses correctly! +${xp} XP`);
+            markQuestStep('q-budget-basics', 1);
             showToast(`+${xp} XP · +₹${gold} Gold 🎉`);
           }}
         />

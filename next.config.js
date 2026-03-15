@@ -1,12 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: { remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co', pathname: '/**' }] },
-  experimental: {
-    turbopack: false,
+  turbopack: {},
+  images: {
+    remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co', pathname: '/**' }],
+    unoptimized: true,
   },
   webpack: (config, { isServer }) => {
     if (isServer) config.resolve.alias = { ...config.resolve.alias, phaser: false };
     return config;
   },
 };
+
 module.exports = nextConfig;
