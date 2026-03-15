@@ -3,7 +3,7 @@
 const GROQ_BASE = 'https://api.groq.com/openai/v1';
 const GROQ_MODEL = 'llama-3.1-8b-instant';
 
-export async function callGrok(
+export async function callGroq(
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
   options?: { max_tokens?: number; temperature?: number }
 ): Promise<string> {
@@ -68,7 +68,7 @@ Indian context: PG rents ₹8–12k Pune, UPI, chai ₹20, student discounts, No
 Exactly 3 choices and 3 outcomes. costs and outcomes must be arrays of 3.
 `.trim();
 
-  const raw = await callGrok(
+  const raw = await callGroq(
     [{ role: 'user', content: prompt }],
     { max_tokens: 450, temperature: 0.7 }
   );
