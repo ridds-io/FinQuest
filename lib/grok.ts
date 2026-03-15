@@ -5,7 +5,7 @@
  */
 
 const GROK_BASE = 'https://api.x.ai/v1';
-const GROK_MODEL = 'grok-beta'; // or grok-beta per xAI docs
+const GROK_MODEL = 'grok-2-1212'; // or grok-beta per xAI docs
 
 export async function callGrok(
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
