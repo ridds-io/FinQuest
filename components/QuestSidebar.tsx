@@ -148,14 +148,14 @@ export function QuestSidebar({ entries, questsDone, onAskTutor }: QuestSidebarPr
           <div ref={tutorRef} className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
             {tutorEntries.length === 0 ? (
               <div className="text-[10px] text-[var(--text-muted)] italic px-1">
-                Ask a question to see Aryan's insights here.
+                Ask a question to see Penny's insights here.
               </div>
             ) : (
               tutorEntries.map((t) => (
                 <div key={t.id} className="border border-blue-800/40 bg-blue-900/10 rounded-md px-2.5 py-2">
                   <div className="flex items-center gap-1 mb-1">
                     <span className="text-[10px]">🤖</span>
-                    <span className="font-pixel text-[8px] text-blue-400/80">Aryan · AI Tutor</span>
+                    <span className="font-pixel text-[8px] text-blue-400/80">Penny · AI Tutor</span>
                   </div>
                   <p className="text-[10px] text-[var(--text)] leading-relaxed">{t.text}</p>
                 </div>
