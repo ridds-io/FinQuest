@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface BudgetGameProps {
   onClose: () => void;
@@ -18,7 +18,7 @@ interface Expense {
   description: string;
 }
 
-const EXPENSES: Expense[] = [
+const HARDCODED_EXPENSES: Expense[] = [
   { id: 'rent',      icon: '🏠', name: 'PG Rent',       amount: 5000, correct: 'needs',   description: 'Monthly Pune PG' },
   { id: 'groceries', icon: '🛒', name: 'Groceries',     amount: 2000, correct: 'needs',   description: 'Weekly supplies' },
   { id: 'mobile',    icon: '📱', name: 'Mobile Bill',   amount: 299,  correct: 'needs',   description: 'Jio recharge' },
@@ -42,6 +42,8 @@ const LABELS = {
 };
 
 export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
+  const [expenses, setExpenses] = useState<Expense[]>(HARDCODED_EXPENSES);
+  const [loadingExpenses, setLoadingExpenses] = useState(true);
   const [placed, setPlaced] = useState<Record<string, Category>>({});
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<Category | null>(null);
@@ -51,18 +53,30 @@ export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
   const [showHint, setShowHint] = useState<string | null>(null);
   const dragSrc = useRef<Category | 'pool'>('pool');
 
+  useEffect(() => {
+    fetch('/api/generate-expenses')
+      .then(r => r.json())
+      .then((data) => {
+        if (data.expenses && Array.isArray(data.expenses) && data.expenses.length === 12) {
+          setExpenses(data.expenses);
+        }
+      })
+      .catch(() => {}) // silently fall back to hardcoded
+      .finally(() => setLoadingExpenses(false));
+  }, []);
+
   // ── totals per category ──
   const totals = { needs: 0, wants: 0, savings: 0 };
   Object.entries(placed).forEach(([id, cat]) => {
     if (cat !== 'pool') {
-      const exp = EXPENSES.find(e => e.id === id);
+      const exp = expenses.find(e => e.id === id);
       if (exp) totals[cat] += exp.amount;
     }
   });
 
-  const poolItems = EXPENSES.filter(e => !placed[e.id] || placed[e.id] === 'pool');
+  const poolItems = expenses.filter(e => !placed[e.id] || placed[e.id] === 'pool');
   const catItems = (cat: Category) =>
-    EXPENSES.filter(e => placed[e.id] === cat);
+    expenses.filter(e => placed[e.id] === cat);
 
   // ── drag handlers ──
   const onDragStart = (id: string, from: Category | 'pool') => {
@@ -87,17 +101,17 @@ export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
   const checkBudget = () => {
     let correct = 0;
     const feedback: string[] = [];
-    EXPENSES.forEach(exp => {
+    expenses.forEach(exp => {
       if (placed[exp.id] === exp.correct) {
         correct++;
       } else if (placed[exp.id] && placed[exp.id] !== 'pool') {
         feedback.push(`${exp.icon} ${exp.name} → should be ${exp.correct.toUpperCase()}`);
       }
     });
-    const pct = Math.round((correct / EXPENSES.length) * 100);
-    const xp = Math.round((correct / EXPENSES.length) * 120);
+    const pct = Math.round((correct / expenses.length) * 100);
+    const xp = Math.round((correct / expenses.length) * 120);
     const gold = xp * 2;
-    setResult({ correct, total: EXPENSES.length, xp, gold, feedback });
+    setResult({ correct, total: expenses.length, xp, gold, feedback });
   };
 
   const reset = () => {
@@ -134,6 +148,13 @@ export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
 
         {!result ? (
           <div className="p-4 space-y-4">
+            {loadingExpenses && (
+              <div className="bg-black/30 rounded-lg p-3 border border-white/10">
+                <div className="font-pixel text-[10px] text-[var(--text-muted)] text-center">
+                  Generating your budget...
+                </div>
+              </div>
+            )}
             {/* Goal bar */}
             <div className="bg-[var(--panel)] rounded-lg p-3 border border-[var(--panel-border)]">
               <div className="font-pixel text-[10px] text-gold mb-2 text-center">
@@ -270,7 +291,7 @@ export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
                 ↺ RESET
               </button>
               <button
-                onClick={() => setShowHint(showHint ? null : EXPENSES[0].id)}
+                onClick={() => setShowHint(showHint ? null : expenses[0]?.id ?? null)}
                 className="font-pixel text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40 px-5 py-2.5 rounded hover:bg-blue-500/30 transition"
               >
                 ? HINT

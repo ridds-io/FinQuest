@@ -29,9 +29,10 @@ export interface ScenarioChoice {
 
 export interface GeneratedScenario {
   situation: string;
+  character: string;
   choices: string[];
   costs: number[];
-  outcomes: Array<{ debt?: number; skill?: string; xp?: number; gold?: number }>;
+  outcomes: Array<{ debt?: number; skill?: string; xp?: number; gold?: number; lesson: string }>;
 }
 
 export interface GameState {

@@ -46,27 +46,73 @@ export interface ScenarioInput {
 
 export interface GeneratedScenario {
   situation: string;
+  character: string;
   choices: string[];
   costs: number[];
-  outcomes: Array<{ debt?: number; skill?: string; xp?: number; gold?: number }>;
+  outcomes: Array<{ debt?: number; skill?: string; xp?: number; gold?: number; lesson: string }>;
 }
 
 export async function generateScenario(input: ScenarioInput): Promise<GeneratedScenario> {
-  const prompt = `
-Generate a JSON financial dilemma for an Indian college student in FinQuest module: ${input.module}.
-Player state: ${JSON.stringify(input.playerState)}
+  const SCENARIO_TYPES = [
+    'roommate_conflict',
+    'unexpected_expense',
+    'peer_pressure_spending',
+    'discount_opportunity',
+    'part_time_job_offer',
+    'subscription_trap',
+    'family_financial_request',
+    'semester_budget_crunch',
+    'second_hand_vs_new',
+    'group_outing_budget',
+    'exam_prep_expense',
+    'festival_spending',
+  ] as const;
 
-Respond with ONLY valid JSON in this exact format (no markdown, no code block):
+  const SCENARIO_DESCRIPTIONS: Record<(typeof SCENARIO_TYPES)[number], string> = {
+    roommate_conflict: 'A situation involving shared living expenses, rent splitting, or roommate financial disagreements',
+    unexpected_expense: 'An unexpected bill, repair, or emergency cost that disrupts the monthly budget',
+    peer_pressure_spending: 'Friends want to go somewhere expensive or buy something the student cannot really afford',
+    discount_opportunity: 'A student discount or cashback opportunity that requires a decision',
+    part_time_job_offer: 'A part-time work opportunity with financial trade-offs like time vs money',
+    subscription_trap: 'Multiple overlapping subscriptions or a tempting new subscription offer',
+    family_financial_request: 'Family asking for money or the student feeling pressure to send money home',
+    semester_budget_crunch: 'End of semester when budget is tight and multiple expenses hit at once',
+    second_hand_vs_new: 'Decision between buying something used/refurbished vs brand new',
+    group_outing_budget: 'A group trip, dinner, or outing where everyone is spending more than the student wants to',
+    exam_prep_expense: 'Cost of study materials, coaching, courses or resources for exams',
+    festival_spending: 'Festival season pressure to buy gifts, clothes, or celebrate expensively',
+  };
+
+  // Deterministic-but-varied selector based on player state
+  const basis = `${input.playerState.level}|${input.playerState.gold}|${input.playerState.avatar ?? ''}|${input.module}`;
+  let hash = 0;
+  for (let i = 0; i < basis.length; i++) {
+    hash = (hash * 31 + basis.charCodeAt(i)) >>> 0;
+  }
+  const scenarioType = SCENARIO_TYPES[hash % SCENARIO_TYPES.length];
+
+  const prompt = `Generate a JSON financial dilemma for an Indian college student in Pune.
+Scenario type: ${scenarioType} — ${SCENARIO_DESCRIPTIONS[scenarioType]}
+Player state: Level ${input.playerState.level}, Gold Rs ${input.playerState.gold}, Avatar: ${input.playerState.avatar}
+
+The scenario must:
+- Be about "${SCENARIO_DESCRIPTIONS[scenarioType]}" specifically — NOT about anything else
+- Feature a realistic Indian student situation with specific Rs amounts
+- Have 3 meaningfully different choices (not just variations of the same choice)
+- Have real financial consequences — one option should be clearly better long-term but harder short-term
+
+Respond with ONLY valid JSON, no markdown:
 {
-  "situation": "Roommate skipped ₹10k PG rent UPI payment...",
-  "choices": ["Pay full ₹10k", "Negotiate NoBroker split", "Find subletter"],
-  "costs": [10000, 4500, 3000],
-  "outcomes": [{"debt": 10000, "skill": "none"}, {"xp": 50, "gold": 100}, {"xp": 100, "gold": 300}]
-}
-
-Indian context: PG rents ₹8–12k Pune, UPI, chai ₹20, student discounts, NoBroker.
-Exactly 3 choices and 3 outcomes. costs and outcomes must be arrays of 3.
-`.trim();
+  "situation": "2-3 sentence scenario description with specific Rs amounts and Indian context",
+  "character": "Name and role of the other person in the scenario (e.g. Priya, your classmate)",
+  "choices": ["Choice A text", "Choice B text", "Choice C text"],
+  "costs": [number, number, number],
+  "outcomes": [
+    {"xp": 30, "gold": -2000, "lesson": "one sentence financial lesson"},
+    {"xp": 60, "gold": -500, "lesson": "one sentence financial lesson"},
+    {"xp": 100, "gold": 200, "lesson": "one sentence financial lesson"}
+  ]
+}`.trim();
 
   const raw = await callGroq(
     [{ role: 'user', content: prompt }],
@@ -75,13 +121,20 @@ Exactly 3 choices and 3 outcomes. costs and outcomes must be arrays of 3.
   try {
     const cleaned = raw.replace(/```json?\s*|\s*```/g, '').trim();
     const parsed = JSON.parse(cleaned) as GeneratedScenario;
-    if (!parsed.situation || !Array.isArray(parsed.choices) || !Array.isArray(parsed.costs) || !Array.isArray(parsed.outcomes)) {
+    if (
+      !parsed.situation ||
+      !parsed.character ||
+      !Array.isArray(parsed.choices) ||
+      !Array.isArray(parsed.costs) ||
+      !Array.isArray(parsed.outcomes)
+    ) {
       throw new Error('Invalid shape');
     }
     return parsed;
   } catch {
     return {
       situation: 'Your roommate says they’ll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?',
+      character: 'Rahul, your roommate',
       choices: [
         'Agree to split ₹6k/₹4k + Spotify — you pay ₹4,075/month',
         'Equal split ₹5k each. Decline Spotify.',
@@ -89,9 +142,9 @@ Exactly 3 choices and 3 outcomes. costs and outcomes must be arrays of 3.
       ],
       costs: [4075, 5000, 4500],
       outcomes: [
-        { debt: 0, skill: 'none' },
-        { xp: 60, gold: 150 },
-        { xp: 100, gold: 300 },
+        { debt: 0, skill: 'none', xp: 30, gold: 0, lesson: 'Late payments break budgets—set clear UPI deadlines to protect cash flow and friendships.' },
+        { xp: 60, gold: 150, lesson: 'Clear, documented splits reduce conflict and make monthly budgeting predictable.' },
+        { xp: 100, gold: 300, lesson: 'Optimize the total cost first (discounts/negotiation), then split fairly for the best long-term outcome.' },
       ],
     };
   }

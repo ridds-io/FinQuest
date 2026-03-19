@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import {
   QuestSidebar,
@@ -12,12 +11,13 @@ import {
   type SidebarEntry,
 } from '@/components/QuestSidebar';
 
-const GameCanvas = dynamic(() => import('@/components/GameCanvas'), { ssr: false });
 const BudgetTetris = dynamic(
   () => import('@/components/BudgetTetris').then((m) => m.BudgetTetris),
   { ssr: false },
 );
 const BudgetGame = dynamic(() => import('@/components/BudgetGame').then((m) => m.BudgetGame), { ssr: false });
+const CafeGame = dynamic(() => import('@/components/CafeGame').then((m) => m.CafeGame), { ssr: false });
+const QuizGame = dynamic(() => import('@/components/QuizGame').then((m) => m.QuizGame), { ssr: false });
 
 const AVATARS = [
   { emoji: '📚', name: 'Scholarship Grinder', gold: 500, stat: 'HIGH' },
@@ -31,6 +31,7 @@ const STORAGE_KEY = 'finquest_state';
 
 function loadState(): {
   avatar: { emoji: string; name: string; type: string };
+  username: string;
   gold: number;
   gems: number;
   level: number;
@@ -42,6 +43,7 @@ function loadState(): {
   if (typeof window === 'undefined')
     return {
       avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
+      username: 'ADVENTURER',
       gold: 15000,
       gems: 50,
       level: 1,
@@ -56,6 +58,7 @@ function loadState(): {
   } catch {}
   return {
     avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
+    username: 'ADVENTURER',
     gold: 15000,
     gems: 50,
     level: 1,
@@ -73,19 +76,29 @@ function saveState(state: ReturnType<typeof loadState>) {
 }
 
 export default function GameView() {
-  const [screen, setScreen] = useState<'avatar' | 'game'>('avatar');
+  const [screen, setScreen] = useState<'welcome' | 'avatar' | 'game'>('welcome');
   const [state, setState] = useState(loadState);
+  const [welcomeUsername, setWelcomeUsername] = useState(() => {
+    try {
+      const s = loadState();
+      return s.username || '';
+    } catch {
+      return '';
+    }
+  });
   const [sidebarEntries, setSidebarEntries] = useState<SidebarEntry[]>([
     ...QUEST_DEFINITIONS,
     ...INITIAL_TIPS,
   ]);
   const [toast, setToast] = useState('');
   const [modal, setModal] = useState<string | null>(null);
+  const [activeGame, setActiveGame] = useState<null | 'cafe' | 'quiz'>(null);
   const [dormScenario, setDormScenario] = useState<{
     situation: string;
+    character?: string;
     choices: string[];
     costs: number[];
-    outcomes: Array<{ xp?: number; gold?: number; debt?: number }>;
+    outcomes: Array<{ xp?: number; gold?: number; debt?: number; lesson?: string }>;
   } | null>(null);
   const [dormOutcome, setDormOutcome] = useState<{ title: string; text: string; xp: number; gold: number } | null>(null);
   const [tutorOpen, setTutorOpen] = useState(false);
@@ -138,6 +151,13 @@ export default function GameView() {
 
   const startGame = () => {
     setScreen('game');
+  };
+
+  const beginQuest = () => {
+    const cleaned = welcomeUsername.trim();
+    const username = cleaned ? cleaned.toUpperCase().slice(0, 14) : 'ADVENTURER';
+    setState((s) => ({ ...s, username }));
+    setScreen('avatar');
   };
 
   const handleLogout = async () => {
@@ -198,6 +218,14 @@ export default function GameView() {
     markQuestStep('q-budget-basics', 0);
   };
 
+  const openCafe = () => {
+    setActiveGame('cafe');
+  };
+
+  const openQuiz = () => {
+    setActiveGame('quiz');
+  };
+
   const dormChoice = (i: number) => {
     if (!dormScenario) return;
     const cost = dormScenario.costs[i] ?? 0;
@@ -213,7 +241,7 @@ export default function GameView() {
     }));
     setDormOutcome({
       title: `Option ${String.fromCharCode(65 + i)}`,
-      text: 'You made a choice. Consider asking the AI Tutor why this matters for your budget!',
+      text: out.lesson ?? 'You made a choice. Consider asking the AI Tutor why this matters for your budget!',
       xp,
       gold: out.gold ?? 0,
     });
@@ -262,6 +290,74 @@ export default function GameView() {
     setTutorLoading(false);
   };
 
+  if (screen === 'welcome') {
+    return (
+      <div className="min-h-screen flex flex-col bg-[linear-gradient(180deg,#0a0e1a_0%,#0d2a1a_40%,#0a1a0a_100%)] relative overflow-hidden">
+        <div
+          className="absolute inset-0 pointer-events-none opacity-60"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(0,255,100,0.04) 31px, rgba(0,255,100,0.04) 32px), repeating-linear-gradient(90deg, transparent, transparent 31px, rgba(0,255,100,0.04) 31px, rgba(0,255,100,0.04) 32px)',
+          }}
+        />
+
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6">
+          <div
+            className="font-pixel text-4xl sm:text-5xl text-gold mb-3"
+            style={{
+              textShadow:
+                '3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',
+            }}
+          >
+            FinQuest
+          </div>
+          <div className="font-pixel text-[11px] sm:text-xs text-[var(--text-muted)] mb-8">
+            Welcome to FinQuest — A Monetary Odyssey
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 w-full max-w-5xl mb-8">
+            <div className="bg-black/30 border border-white/10 rounded-lg p-5">
+              <div className="font-pixel text-gold text-xs mb-2">🎮 How to Play</div>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+                Walk through an RPG city. Click buildings to enter financial scenarios. Make decisions. Learn by doing.
+              </p>
+            </div>
+            <div className="bg-black/30 border border-white/10 rounded-lg p-5">
+              <div className="font-pixel text-gold text-xs mb-2">🧠 What You'll Learn</div>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+                Budgeting, saving, investing, loans — all through real Indian student situations like PG rent, UPI payments, chai habits.
+              </p>
+            </div>
+            <div className="bg-black/30 border border-white/10 rounded-lg p-5">
+              <div className="font-pixel text-gold text-xs mb-2">🏆 Your Goal</div>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+                Complete quests, earn XP and Gold, unlock new city areas. Become financially literate before your first job.
+              </p>
+            </div>
+          </div>
+
+          <div className="w-full max-w-xl bg-black/30 border border-white/10 rounded-lg p-5">
+            <label className="font-pixel text-xs text-[var(--text-muted)] block mb-2">Choose your username</label>
+            <input
+              type="text"
+              value={welcomeUsername}
+              onChange={(e) => setWelcomeUsername(e.target.value)}
+              placeholder="e.g. SANJANA"
+              className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold"
+              maxLength={14}
+            />
+            <button
+              onClick={beginQuest}
+              className="mt-4 w-full font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1 transition"
+            >
+              Begin Quest →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (screen === 'avatar') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--dark)] p-6">
@@ -300,7 +396,7 @@ export default function GameView() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#16213e] relative">
+    <div className="fixed inset-0 flex flex-col bg-[#16213e] overflow-hidden relative">
       <div className="flex-1 flex min-h-0">
         <QuestSidebar
           entries={sidebarEntries}
@@ -313,8 +409,42 @@ export default function GameView() {
           }}
         />
 
-        <main className="flex-1 relative min-h-[500px] bg-[#2d5a2d]">
-          <GameCanvas />
+        <main className="flex-1 relative min-h-[500px] bg-[#2d5a2d] overflow-hidden">
+          <div className="relative w-full h-full">
+            <img
+              src="/map/world-map.png"
+              alt="FinQuest World Map"
+              className="w-full h-full object-cover select-none"
+              draggable={false}
+              style={{ imageRendering: 'pixelated' }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+            {/* Invisible clickable hotspots over each building */}
+            <div
+              className="absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 border-transparent hover:border-yellow-400/40 transition-all duration-200 flex items-end justify-center pb-2"
+              style={{ left: '12%', top: '42%', width: '20%', height: '28%' }}
+              onClick={openBudgetingCity}
+            >
+              <span className="font-pixel text-[9px] text-white bg-black/60 px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
+                Budgeting City
+              </span>
+            </div>
+            <div
+              className="absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl border-2 border-transparent hover:border-yellow-400/20 transition-all duration-200 opacity-60"
+              style={{ left: '55%', top: '8%', width: '22%', height: '35%' }}
+              onClick={() => showToast('🔒 Complete Budgeting City to unlock Investment Tower!')}
+            />
+            <div
+              className="absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 border-transparent hover:border-yellow-400/40 transition-all duration-200"
+              style={{ left: '35%', top: '28%', width: '18%', height: '22%' }}
+              onClick={openQuiz}
+            />
+            <div
+              className="absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl opacity-60"
+              style={{ left: '60%', top: '55%', width: '20%', height: '28%' }}
+              onClick={() => showToast('🔒 Complete Budgeting City to unlock Loan Bank!')}
+            />
+          </div>
 
           <div className="absolute inset-0 pointer-events-none z-10">
             <div className="absolute top-4 left-4 z-20 pointer-events-none">
@@ -324,7 +454,7 @@ export default function GameView() {
                 </div>
                 <div>
                   <div className="font-pixel text-[9px] text-[var(--text)] uppercase mb-1">
-                    {state.avatar.name}, LV.{state.level}
+                    {state.username}, LV.{state.level}
                   </div>
                   <div className="flex gap-1 mb-1">
                     {Array.from({ length: 10 }).map((_, i) => {
@@ -402,117 +532,68 @@ export default function GameView() {
                 ))}
               </div>
             </div>
-
-            <div className="absolute inset-0 pointer-events-none sm:pointer-events-auto">
-              <div
-                style={{ position: 'absolute', left: '8%', top: '18%' }}
-                onClick={openBudgetingCity}
-                className="pointer-events-auto cursor-pointer"
-              >
-                <Image
-                  src="/sprites/buildings/budgeting-city.png"
-                  alt="Budgeting City"
-                  width={180}
-                  height={200}
-                  style={{ imageRendering: 'pixelated' }}
-                />
-                <span className="font-pixel text-[9px] text-[var(--text)] block text-center mt-1">
-                  Budgeting City
-                </span>
-              </div>
-              <div
-                style={{ position: 'absolute', left: '55%', top: '12%' }}
-                onClick={() =>
-                  showToast('🔒 Unlock Investment Tower by completing Budgeting City!')
-                }
-                className="pointer-events-auto cursor-pointer opacity-80"
-              >
-                <Image
-                  src="/sprites/buildings/investment-tower.png"
-                  alt="Investment Tower"
-                  width={160}
-                  height={190}
-                  style={{ imageRendering: 'pixelated' }}
-                />
-                <span className="font-pixel text-[9px] text-[var(--text)] block text-center mt-1">
-                  Investment Tower
-                </span>
-              </div>
-              <div
-                style={{ position: 'absolute', left: '35%', top: '30%' }}
-                onClick={() => showToast('Central Plaza — Quiz coming soon!')}
-                className="pointer-events-auto cursor-pointer"
-              >
-                <Image
-                  src="/sprites/buildings/central-plaza.png"
-                  alt="Central Plaza"
-                  width={170}
-                  height={190}
-                  style={{ imageRendering: 'pixelated' }}
-                />
-                <span className="font-pixel text-[9px] text-[var(--text)] block text-center mt-1">
-                  Central Plaza
-                </span>
-              </div>
-
-              {[
-                { src: '/sprites/environment/tree-1.png', left: '5%', top: '60%', delay: '0s' },
-                { src: '/sprites/environment/tree-2.png', left: '20%', top: '55%', delay: '0.4s' },
-                { src: '/sprites/environment/tree-1.png', left: '70%', top: '65%', delay: '0.7s' },
-                { src: '/sprites/environment/tree-2.png', left: '85%', top: '50%', delay: '1.1s' },
-              ].map((t) => (
-                <Image
-                  key={`${t.src}-${t.left}-${t.top}`}
-                  src={t.src}
-                  width={48}
-                  height={64}
-                  alt=""
-                  style={{
-                    position: 'absolute',
-                    left: t.left,
-                    top: t.top,
-                    imageRendering: 'pixelated',
-                    animation: `treeSway 3s ease-in-out ${t.delay} infinite`,
-                  }}
-                />
-              ))}
-            </div>
           </div>
         </main>
       </div>
 
       {/* Modal: Budgeting City */}
       {modal === 'budgeting-city' && (
-        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[200] p-4" onClick={() => setModal(null)}>
-          <div className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] rounded max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-4 border-b border-[var(--panel-border)]">
-              <span className="font-pixel text-gold">🏘️ Budgeting City</span>
-              <button onClick={() => setModal(null)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
+        <div className="fixed inset-0 z-[200]">
+          <div className="relative w-full h-full bg-[#2d5a2d]">
+            <img
+              src="/map/budgeting-city.png"
+              className="w-full h-full object-cover select-none"
+              style={{ imageRendering: 'pixelated' }}
+              draggable={false}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+            {/* Close button */}
+            <button
+              onClick={() => setModal(null)}
+              className="absolute top-4 right-4 font-pixel text-xs bg-black/70 border border-gold/40 text-gold px-3 py-2 rounded z-10 hover:bg-black/90"
+            >
+              ✕ CLOSE
+            </button>
+            {/* Hotspots - positions match the mockup */}
+            {/* DORMS */}
+            <div
+              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
+              style={{ left: '48%', top: '20%', width: '15%', height: '20%' }}
+              onClick={() => { setModal(null); openDorms(); }}
+            >
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">DORMS</span>
             </div>
-            <div className="p-6 space-y-4">
-              <p className="text-[var(--text-muted)] text-sm">Where do you want to go?</p>
-              <button
-                onClick={() => {
-                  setModal(null);
-                  setModal('tetris');
-                }}
-                className="w-full text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5"
-              >
-                <div className="font-pixel text-gold text-xs">🧱 BUDGET TETRIS</div>
-                <div className="text-sm text-[var(--text-muted)]">Falling expense blocks · Catch income, dodge overspending</div>
-              </button>
-              <button onClick={() => { setModal(null); openDorms(); }} className="w-full text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5">
-                <div className="font-pixel text-gold text-xs">🏠 DORMS — Roommate Rent Chat</div>
-                <div className="text-sm text-[var(--text-muted)]">Split rent, handle UPI drama · Grok-generated scenario</div>
-              </button>
-              <button onClick={() => { setModal(null); setModal('market'); }} className="w-full text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5">
-                <div className="font-pixel text-gold text-xs">🛒 MARKET — 50/30/20</div>
-                <div className="text-sm text-[var(--text-muted)]">Drag & drop your ₹15k budget</div>
-              </button>
-              <button onClick={() => { setModal(null); showToast('Univ. Café — coming soon!'); }} className="w-full text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5">
-                <div className="font-pixel text-gold text-xs">☕ UNIV. CAFÉ</div>
-                <div className="text-sm text-[var(--text-muted)]">Expense tracking, UPI chai bills</div>
-              </button>
+            {/* MARKET */}
+            <div
+              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
+              style={{ left: '8%', top: '30%', width: '22%', height: '22%' }}
+              onClick={() => { setModal(null); setModal('market'); }}
+            >
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">MARKET</span>
+            </div>
+            {/* CAFE */}
+            <div
+              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
+              style={{ left: '55%', top: '42%', width: '18%', height: '22%' }}
+              onClick={() => { setModal(null); openCafe(); }}
+            >
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">UNIV. CAFÉ</span>
+            </div>
+            {/* CITY HALL */}
+            <div
+              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
+              style={{ left: '55%', top: '5%', width: '18%', height: '18%' }}
+              onClick={() => { setModal(null); openQuiz(); }}
+            >
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">CITY HALL</span>
+            </div>
+            {/* BUDGET TETRIS */}
+            <div
+              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
+              style={{ left: '25%', top: '55%', width: '15%', height: '18%' }}
+              onClick={() => { setModal(null); setModal('tetris'); }}
+            >
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">ARCADE</span>
             </div>
           </div>
         </div>
@@ -528,7 +609,7 @@ export default function GameView() {
             </div>
             <div className="p-6">
               <div className="mb-4">
-                <div className="font-pixel text-gold text-xs mb-2">Roommate Rahul:</div>
+                <div className="font-pixel text-gold text-xs mb-2">{dormScenario?.character ?? 'Roommate Rahul'}:</div>
                 <p className="text-[var(--text)] text-sm leading-relaxed">
                   {dormScenario?.situation ?? 'Loading scenario from Grok...'}
                 </p>
@@ -621,6 +702,38 @@ export default function GameView() {
             }));
             markQuestStep('q-budget-basics', 1);
             showToast(`+${xp} XP · +₹${gold} Gold 🎉`);
+          }}
+        />
+      )}
+
+      {activeGame === 'cafe' && (
+        <CafeGame
+          onClose={() => setActiveGame(null)}
+          onComplete={(xpEarned) => {
+            setState((s) => ({
+              ...s,
+              xp: s.xp + xpEarned,
+              gold: s.gold + Math.floor(xpEarned * 2),
+              questsDone: s.questsDone + 1,
+              budgetProgress: Math.min(100, s.budgetProgress + 20),
+            }));
+            showToast(`+${xpEarned} XP earned! ☕`);
+          }}
+        />
+      )}
+
+      {activeGame === 'quiz' && (
+        <QuizGame
+          onClose={() => setActiveGame(null)}
+          onComplete={(result) => {
+            setState((s) => ({
+              ...s,
+              xp: s.xp + result.xpEarned,
+              gold: s.gold + result.goldEarned,
+              questsDone: s.questsDone + 1,
+              budgetProgress: Math.min(100, s.budgetProgress + 10),
+            }));
+            showToast(`🏛️ Quiz complete! +${result.xpEarned} XP`);
           }}
         />
       )}
