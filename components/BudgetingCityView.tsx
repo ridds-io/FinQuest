@@ -105,7 +105,7 @@ export default function BudgetingCityView() {
   const [dormOutcome, setDormOutcome] = useState<{ title: string; text: string; xp: number; gold: number } | null>(null);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<Array<{ role: string; content: string }>>([
-    { role: 'ai', content: "Namaste! I'm your Socratic financial guide, Penny. What financial situation are you navigating today?" },
+    { role: 'ai', content: "Namaste! I'm your Socratic financial guide. What financial situation are you navigating today?" },
   ]);
   const [tutorInput, setTutorInput] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
@@ -427,8 +427,8 @@ export default function BudgetingCityView() {
                 onClick={() => setTutorOpen(true)}
                 className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 pointer-events-auto hover:shadow-none hover:translate-y-[4px] transition-all"
               >
-                <span>🤖</span>
-                <span className="font-pixel text-[9px] text-green-400">AI TUTOR</span>
+                <span>🐱</span>
+                <span className="font-pixel text-[9px] text-green-400">ARYAN</span>
               </button>
             </div>
 
@@ -601,10 +601,21 @@ export default function BudgetingCityView() {
         <div className="fixed right-0 top-0 bottom-0 w-full sm:w-96 bg-[rgba(5,15,35,0.97)] border-l-2 border-blue-500/50 z-[300] flex flex-col shadow-2xl">
           <div className="flex justify-between items-center p-4 border-b border-blue-500/30">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">🤖</div>
+              <div className="w-8 h-8 bg-[#0a1a2e] border border-gold/40 rounded-full overflow-hidden flex items-center justify-center">
+                <img
+                  src="/cat.png"
+                  alt="Aryan"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    (e.currentTarget.nextSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
+                  }}
+                />
+                <span className="text-lg hidden">🐱</span>
+              </div>
               <div>
-                <div className="font-pixel text-[var(--blue-light)] text-xs">Penny · AI Tutor</div>
-                <div className="text-xs text-[var(--text-muted)]">Socratic Guide · RAG + Grok</div>
+                <div className="font-pixel text-[var(--blue-light)] text-xs">Aryan</div>
+                <div className="text-xs text-[var(--text-muted)]">Finance Cat · RAG + Groq</div>
               </div>
             </div>
             <button onClick={() => setTutorOpen(false)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>

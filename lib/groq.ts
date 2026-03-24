@@ -83,13 +83,11 @@ export async function generateScenario(input: ScenarioInput): Promise<GeneratedS
     festival_spending: 'Festival season pressure to buy gifts, clothes, or celebrate expensively',
   };
 
-  // Deterministic-but-varied selector based on player state
-  const basis = `${input.playerState.level}|${input.playerState.gold}|${input.playerState.avatar ?? ''}|${input.module}`;
-  let hash = 0;
-  for (let i = 0; i < basis.length; i++) {
-    hash = (hash * 31 + basis.charCodeAt(i)) >>> 0;
-  }
-  const scenarioType = SCENARIO_TYPES[hash % SCENARIO_TYPES.length];
+  // Pick scenario type based on quest count so it rotates
+  const scenarioType = SCENARIO_TYPES[
+    (input.playerState.level + Math.floor(Math.random() * SCENARIO_TYPES.length)) 
+    % SCENARIO_TYPES.length
+  ];
 
   const prompt = `Generate a JSON financial dilemma for an Indian college student in Pune.
 Scenario type: ${scenarioType} — ${SCENARIO_DESCRIPTIONS[scenarioType]}
