@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import {
   QuestSidebar,
   QUEST_DEFINITIONS,
@@ -76,89 +76,14 @@ function saveState(state: ReturnType<typeof loadState>) {
   } catch {}
 }
 
-// ── Aryan Cat Tutor Intro ──────────────────────────────────────────────────
-function AryanIntro({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState(0);
-  const lines = [
-    "Hey there! I'm Aryan — your nerdy finance cat. 🐱",
-    "Money can feel confusing, but don't worry — we'll figure it out together.",
-    "Let's learn a few simple tricks to make your money work smarter.",
-    "Explore the city, click on buildings, and make financial decisions.",
-    "Every choice teaches you something real. Ready to begin? 🚀",
-  ];
-
-  const next = () => {
-    if (step < lines.length - 1) setStep(s => s + 1);
-    else onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-[400] flex items-end justify-center pb-8 px-4 pointer-events-none">
-      <div
-        className="pointer-events-auto w-full max-w-2xl bg-[rgba(5,10,25,0.97)] border-2 border-[var(--panel-border)] rounded-xl shadow-2xl p-5 flex gap-4 items-end"
-        style={{ boxShadow: '0 0 40px rgba(255,215,0,0.15)' }}
-      >
-        {/* Cat avatar */}
-        <div className="flex-shrink-0 flex flex-col items-center gap-1">
-          <div className="w-16 h-16 rounded-full border-2 border-gold/50 overflow-hidden bg-[#0a1a2e] flex items-center justify-center">
-            <img
-              src="/cat.png"
-              alt="Aryan"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                (e.currentTarget.nextSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
-              }}
-            />
-            <span className="text-3xl hidden">🐱</span>
-          </div>
-          <div className="font-pixel text-[8px] text-gold">ARYAN</div>
-        </div>
-
-        {/* Dialogue */}
-        <div className="flex-1 min-w-0">
-          <div className="font-pixel text-[9px] text-[var(--text-muted)] mb-2">Finance Tutor Cat</div>
-          <div className="text-sm text-[var(--text)] leading-relaxed min-h-[2.5rem]">
-            {lines[step]}
-          </div>
-          {/* Dots */}
-          <div className="flex gap-1 mt-3">
-            {lines.map((_, i) => (
-              <div
-                key={i}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${i === step ? 'bg-gold' : 'bg-white/20'}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Buttons */}
-        <div className="flex-shrink-0 flex flex-col gap-2">
-          <button
-            onClick={next}
-            className="font-pixel text-[10px] bg-gold text-[var(--dark)] px-4 py-2 rounded hover:-translate-y-0.5 transition whitespace-nowrap"
-          >
-            {step < lines.length - 1 ? 'Next →' : "Let's Go! →"}
-          </button>
-          <button
-            onClick={onClose}
-            className="font-pixel text-[9px] text-[var(--text-muted)] hover:text-white transition text-center"
-          >
-            Skip
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function GameView() {
+export default function MainGameView() {
+  const router = useRouter();
   const [screen, setScreen] = useState<'welcome' | 'avatar' | 'game'>('welcome');
   const [state, setState] = useState(loadState);
   const [welcomeUsername, setWelcomeUsername] = useState(() => {
     try {
       const s = loadState();
-      return s.username && s.username !== 'ADVENTURER' ? s.username : '';
+      return s.username || '';
     } catch {
       return '';
     }
@@ -168,16 +93,8 @@ export default function GameView() {
     ...INITIAL_TIPS,
   ]);
   const [toast, setToast] = useState('');
-
-  // Navigation: null = world map, 'budgeting-city' = submap, 'dorms'/'market'/'tetris' = quest modals
   const [modal, setModal] = useState<string | null>(null);
-  // Active game (cafe/quiz) — rendered on top of everything
   const [activeGame, setActiveGame] = useState<null | 'cafe' | 'quiz'>(null);
-
-  // Aryan intro — show once when entering game screen
-  const [showAryanIntro, setShowAryanIntro] = useState(false);
-  const aryanShownRef = useRef(false);
-
   const [dormScenario, setDormScenario] = useState<{
     situation: string;
     character?: string;
@@ -188,7 +105,7 @@ export default function GameView() {
   const [dormOutcome, setDormOutcome] = useState<{ title: string; text: string; xp: number; gold: number } | null>(null);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<Array<{ role: string; content: string }>>([
-    { role: 'ai', content: "Namaste! I'm your Socratic financial guide. What financial situation are you navigating today?" },
+    { role: 'ai', content: "Namaste! I'm your Socratic financial guide, Penny. What financial situation are you navigating today?" },
   ]);
   const [tutorInput, setTutorInput] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
@@ -201,14 +118,6 @@ export default function GameView() {
   useEffect(() => {
     persist();
   }, [state, persist]);
-
-  // Show Aryan intro once when entering game screen
-  useEffect(() => {
-    if (screen === 'game' && !aryanShownRef.current) {
-      aryanShownRef.current = true;
-      setTimeout(() => setShowAryanIntro(true), 600);
-    }
-  }, [screen]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -276,7 +185,8 @@ export default function GameView() {
       const data = await res.json();
       if (data.situation) setDormScenario(data);
       else setDormScenario({
-        situation: "Your roommate says they'll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?",
+        situation:
+          'Your roommate says they\'ll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?',
         choices: [
           'Agree to split ₹6k/₹4k + Spotify — you pay ₹4,075/month',
           'Equal split ₹5k each. Decline Spotify.',
@@ -287,7 +197,7 @@ export default function GameView() {
       });
     } catch {
       setDormScenario({
-        situation: "Your roommate says they'll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?",
+        situation: 'Your roommate says they\'ll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?',
         choices: [
           'Agree to split ₹6k/₹4k + Spotify — you pay ₹4,075/month',
           'Equal split ₹5k each. Decline Spotify.',
@@ -306,11 +216,10 @@ export default function GameView() {
   };
 
   const openBudgetingCity = () => {
-    setModal('budgeting-city');
     markQuestStep('q-budget-basics', 0);
+    router.push('/game/budgeting_city');
   };
 
-  // These open games ON TOP of the budgeting city submap
   const openCafe = () => {
     setActiveGame('cafe');
   };
@@ -357,7 +266,7 @@ export default function GameView() {
           query: msg,
           gameState: { gold: state.gold, level: state.level, avatar: state.avatar, xp: state.xp },
           history: tutorMessages
-            .slice(-6)
+            .slice(-6)  // last 6 messages = 3 exchanges, enough context without bloating
             .map(m => ({
               role: m.role === 'user' ? 'user' : 'assistant',
               content: m.content,
@@ -365,7 +274,7 @@ export default function GameView() {
         }),
       });
       const data = await res.json();
-      const reply = data.question || "I couldn't connect. Try again!";
+      const reply = data.question || 'I couldn’t connect. Try again!';
       setTutorMessages((m) => [...m, { role: 'ai', content: reply }]);
       addTutorToSidebar(reply);
       markQuestStep('q-budget-basics', 2);
@@ -383,11 +292,9 @@ export default function GameView() {
     setTutorLoading(false);
   };
 
-  // ── WELCOME SCREEN ─────────────────────────────────────────────────────────
   if (screen === 'welcome') {
     return (
       <div className="min-h-screen flex flex-col bg-[linear-gradient(180deg,#0a0e1a_0%,#0d2a1a_40%,#0a1a0a_100%)] relative overflow-hidden">
-        {/* Pixel grid overlay */}
         <div
           className="absolute inset-0 pointer-events-none opacity-60"
           style={{
@@ -397,7 +304,6 @@ export default function GameView() {
         />
 
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6">
-          {/* Logo */}
           <div
             className="font-pixel text-4xl sm:text-5xl text-gold mb-3"
             style={{
@@ -407,49 +313,44 @@ export default function GameView() {
           >
             FinQuest
           </div>
-          <div className="font-pixel text-[11px] sm:text-xs text-[var(--text-muted)] mb-8 text-center">
+          <div className="font-pixel text-[11px] sm:text-xs text-[var(--text-muted)] mb-8">
             Welcome to FinQuest — A Monetary Odyssey
           </div>
 
-          {/* Info cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 w-full max-w-5xl mb-8">
-            <div className="bg-black/30 border border-white/10 rounded-lg p-5 hover:border-gold/30 transition-colors">
-              <div className="font-pixel text-gold text-xs mb-3">🎮 How to Play</div>
+            <div className="bg-black/30 border border-white/10 rounded-lg p-5">
+              <div className="font-pixel text-gold text-xs mb-2">🎮 How to Play</div>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 Walk through an RPG city. Click buildings to enter financial scenarios. Make decisions. Learn by doing.
               </p>
             </div>
-            <div className="bg-black/30 border border-white/10 rounded-lg p-5 hover:border-gold/30 transition-colors">
-              <div className="font-pixel text-gold text-xs mb-3">🧠 What You'll Learn</div>
+            <div className="bg-black/30 border border-white/10 rounded-lg p-5">
+              <div className="font-pixel text-gold text-xs mb-2">🧠 What You'll Learn</div>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 Budgeting, saving, investing, loans — all through real Indian student situations like PG rent, UPI payments, chai habits.
               </p>
             </div>
-            <div className="bg-black/30 border border-white/10 rounded-lg p-5 hover:border-gold/30 transition-colors">
-              <div className="font-pixel text-gold text-xs mb-3">🏆 Your Goal</div>
+            <div className="bg-black/30 border border-white/10 rounded-lg p-5">
+              <div className="font-pixel text-gold text-xs mb-2">🏆 Your Goal</div>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 Complete quests, earn XP and Gold, unlock new city areas. Become financially literate before your first job.
               </p>
             </div>
           </div>
 
-          {/* Username input */}
           <div className="w-full max-w-xl bg-black/30 border border-white/10 rounded-lg p-5">
-            <label className="font-pixel text-xs text-[var(--text-muted)] block mb-2">
-              Choose your username
-            </label>
+            <label className="font-pixel text-xs text-[var(--text-muted)] block mb-2">Choose your username</label>
             <input
               type="text"
               value={welcomeUsername}
               onChange={(e) => setWelcomeUsername(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && beginQuest()}
               placeholder="e.g. SANJANA"
-              className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+              className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold"
               maxLength={14}
             />
             <button
               onClick={beginQuest}
-              className="mt-4 w-full font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1 transition-transform"
+              className="mt-4 w-full font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1 transition"
             >
               Begin Quest →
             </button>
@@ -459,16 +360,12 @@ export default function GameView() {
     );
   }
 
-  // ── AVATAR SELECT SCREEN ───────────────────────────────────────────────────
   if (screen === 'avatar') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--dark)] p-6">
-        <button
-          onClick={() => setScreen('welcome')}
-          className="font-pixel text-xs text-[var(--text-muted)] border border-white/20 px-4 py-2 rounded mb-6 hover:text-gold hover:border-gold transition-colors"
-        >
+        <Link href="/" className="font-pixel text-xs text-[var(--text-muted)] border border-white/20 px-4 py-2 rounded mb-6 hover:text-gold hover:border-gold">
           ← Back
-        </button>
+        </Link>
         <h1 className="font-pixel text-gold text-center mb-2">Choose Your Avatar</h1>
         <p className="text-[var(--text-muted)] text-center mb-8 max-w-lg">
           Your starting financial situation shapes your adventure. No judgment — every path teaches different lessons.
@@ -478,7 +375,7 @@ export default function GameView() {
             <button
               key={a.name}
               onClick={() => selectAvatar(i)}
-              className={`p-6 rounded border-2 text-center transition-all ${
+              className={`p-6 rounded border-2 text-center transition ${
                 state.avatar.type === a.name
                   ? 'border-gold bg-gold/10 shadow-lg shadow-gold/20'
                   : 'border-white/20 bg-white/5 hover:border-gold/50'
@@ -492,7 +389,7 @@ export default function GameView() {
         </div>
         <button
           onClick={startGame}
-          className="font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1 transition-transform"
+          className="font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1"
         >
           ▶ Enter FinQuest World
         </button>
@@ -500,9 +397,8 @@ export default function GameView() {
     );
   }
 
-  // ── GAME SCREEN ────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#16213e] overflow-hidden">
+    <div className="fixed inset-0 flex flex-col bg-[#16213e] overflow-hidden relative">
       <div className="flex-1 flex min-h-0">
         <QuestSidebar
           entries={sidebarEntries}
@@ -515,60 +411,41 @@ export default function GameView() {
           }}
         />
 
-        {/* ── MAIN MAP AREA ── */}
         <main className="flex-1 relative min-h-[500px] bg-[#2d5a2d] overflow-hidden">
-          {/* World map image + hotspots */}
           <div className="relative w-full h-full">
             <img
-              src="/map/world-map.png"
+              src="/assets/background.jpg"
               alt="FinQuest World Map"
-              className="w-full h-full object-cover select-none"
+              className="absolute w-full h-full object-cover select-none z-0"
               draggable={false}
               style={{ imageRendering: 'pixelated' }}
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-
-            {/* ── HOTSPOT: Budgeting City ── */}
+            {/* Clickable hotspots with building images */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 border-transparent hover:border-yellow-400/40 transition-all duration-200 flex items-end justify-center pb-2"
+              className="absolute cursor-pointer hover:-translate-y-1 transition-transform duration-300 z-10 flex items-end justify-center mix-blend-multiply"
               style={{ left: '12%', top: '42%', width: '20%', height: '28%' }}
               onClick={openBudgetingCity}
             >
-              <span className="font-pixel text-[9px] text-white bg-black/60 px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
-                Budgeting City
-              </span>
+              <img src="/assets/budgeting.png" alt="Budgeting City" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             </div>
-
-            {/* ── HOTSPOT: Investment Tower (locked) ── */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl border-2 border-transparent hover:border-yellow-400/20 transition-all duration-200 opacity-60"
+              className="absolute cursor-pointer hover:-translate-y-1 transition-transform duration-300 z-10 opacity-60 mix-blend-multiply"
               style={{ left: '55%', top: '8%', width: '22%', height: '35%' }}
               onClick={() => showToast('🔒 Complete Budgeting City to unlock Investment Tower!')}
-            />
-
-            {/* ── HOTSPOT: Central Plaza (quiz) ── */}
+            >
+              <img src="/assets/mainasset.jpg" alt="Investment Tower" className="w-full h-full object-contain mix-blend-darken" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            </div>
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 border-transparent hover:border-yellow-400/40 transition-all duration-200 flex items-end justify-center pb-2"
+              className="absolute cursor-pointer hover:-translate-y-1 transition-transform duration-300 z-10 mix-blend-multiply"
               style={{ left: '35%', top: '28%', width: '18%', height: '22%' }}
               onClick={openQuiz}
             >
-              <span className="font-pixel text-[9px] text-white bg-black/60 px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
-                Central Plaza
-              </span>
+               <img src="/assets/budgetasset.png" alt="City Hall" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             </div>
-
-            {/* ── HOTSPOT: Loan Bank (locked) ── */}
-            <div
-              className="absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl opacity-60"
-              style={{ left: '60%', top: '55%', width: '20%', height: '28%' }}
-              onClick={() => showToast('🔒 Complete Budgeting City to unlock Loan Bank!')}
-            />
           </div>
 
-          {/* ── HUD OVERLAY (pointer-events-none wrapper, children opt-in) ── */}
-          <div className="absolute inset-0 pointer-events-none z-10">
-
-            {/* Player HUD — top left */}
+          <div className="absolute inset-0 pointer-events-none z-20">
             <div className="absolute top-4 left-4 z-20 pointer-events-none">
               <div className="border-4 border-[#1a1a1a] bg-[rgba(20,20,20,0.85)] rounded-lg p-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2">
                 <div className="w-12 h-12 bg-green-800 border-2 border-gray-600 rounded flex items-center justify-center text-2xl">
@@ -576,12 +453,13 @@ export default function GameView() {
                 </div>
                 <div>
                   <div className="font-pixel text-[9px] text-[var(--text)] uppercase mb-1">
-                    {state.username || 'ADVENTURER'}, LV.{state.level}
+                    {state.username}, LV.{state.level}
                   </div>
                   <div className="flex gap-1 mb-1">
                     {Array.from({ length: 10 }).map((_, i) => {
                       const filled = (state.hp / 10) > i;
                       return (
+                        // eslint-disable-next-line react/no-array-index-key
                         <span key={i}>{filled ? '❤️' : '🖤'}</span>
                       );
                     })}
@@ -590,6 +468,7 @@ export default function GameView() {
                     {Array.from({ length: 10 }).map((_, i) => {
                       const filled = ((state.xp % 100) / 10) > i;
                       return (
+                        // eslint-disable-next-line react/no-array-index-key
                         <span key={i}>{filled ? '💎' : '◇'}</span>
                       );
                     })}
@@ -598,7 +477,6 @@ export default function GameView() {
               </div>
             </div>
 
-            {/* Title — top center */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
               <div
                 className="font-pixel text-2xl text-white"
@@ -611,9 +489,8 @@ export default function GameView() {
               </div>
             </div>
 
-            {/* Gold / Gems / Logout — top right */}
-            <div className="absolute top-4 right-4 z-20 pointer-events-auto">
-              <div className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-pixel text-[9px] text-[#FFD700] uppercase space-y-1">
+            <div className="absolute top-4 right-4 z-20 pointer-events-none">
+              <div className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-pixel text-[9px] text-[#FFD700] uppercase space-y-1 pointer-events-auto">
                 <div>🪙 COINS: {state.gold.toLocaleString('en-IN')}</div>
                 <div>💎 TOKENS: {state.gems}</div>
                 <button
@@ -625,24 +502,22 @@ export default function GameView() {
               </div>
             </div>
 
-            {/* AI Tutor button */}
-            <div className="absolute top-28 right-4 z-20 pointer-events-auto">
+            <div className="absolute top-28 right-4 z-20 pointer-events-none">
               <button
                 onClick={() => setTutorOpen(true)}
-                className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 hover:shadow-none hover:translate-y-[4px] transition-all"
+                className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 pointer-events-auto hover:shadow-none hover:translate-y-[4px] transition-all"
               >
-                <span>🐱</span>
-                <span className="font-pixel text-[9px] text-green-400">ARYAN</span>
+                <span>🤖</span>
+                <span className="font-pixel text-[9px] text-green-400">AI TUTOR</span>
               </button>
             </div>
 
-            {/* Hotbar — bottom right */}
-            <div className="absolute bottom-4 right-4 z-20 pointer-events-auto">
-              <div className="flex flex-row gap-2">
+            <div className="absolute bottom-4 right-4 z-20 pointer-events-none">
+              <div className="flex flex-row gap-2 pointer-events-auto">
                 {[
-                  { label: 'MAP', icon: '🗺️', onClick: () => showToast('🗺️ You are on the World Map!') },
+                  { label: 'MAP', icon: '🗺️', onClick: () => showToast('🗺️ Map — coming soon!') },
                   { label: 'INVENTORY', icon: '🎒', onClick: () => showToast('🎒 Inventory — coming soon!') },
-                  { label: 'CITY', icon: '🏙️', onClick: openBudgetingCity },
+                  { label: 'QUESTS', icon: '📜', onClick: () => setModal('budgeting-city') },
                   { label: 'MENU', icon: '☰', onClick: () => (window.location.href = '/') },
                 ].map((btn) => (
                   <button
@@ -660,154 +535,82 @@ export default function GameView() {
         </main>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          BUDGETING CITY SUBMAP — full screen overlay
-          Navigation: world map → budgeting city → quest modal
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* Modal: Budgeting City */}
       {modal === 'budgeting-city' && (
         <div className="fixed inset-0 z-[200]">
           <div className="relative w-full h-full bg-[#2d5a2d]">
-            {/* Background image */}
             <img
               src="/map/budgeting-city.png"
               className="w-full h-full object-cover select-none"
               style={{ imageRendering: 'pixelated' }}
               draggable={false}
-              alt="Budgeting City"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-
-            {/* ── Back to World Map button ── */}
+            {/* Close button */}
             <button
               onClick={() => setModal(null)}
-              className="absolute top-4 left-4 font-pixel text-xs bg-black/80 border border-white/30 text-white px-3 py-2 rounded z-10 hover:bg-black/95 hover:border-gold/60 transition-all flex items-center gap-2"
-            >
-              ← World Map
-            </button>
-
-            {/* ── City title ── */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-              <div
-                className="font-pixel text-sm text-gold"
-                style={{ textShadow: '2px 2px 0 #000, -1px -1px 0 #000' }}
-              >
-                Budgeting City
-              </div>
-            </div>
-
-            {/* ── Close / X button ── */}
-            <button
-              onClick={() => setModal(null)}
-              className="absolute top-4 right-4 font-pixel text-xs bg-black/70 border border-gold/40 text-gold px-3 py-2 rounded z-10 hover:bg-black/90 transition-all"
+              className="absolute top-4 right-4 font-pixel text-xs bg-black/70 border border-gold/40 text-gold px-3 py-2 rounded z-10 hover:bg-black/90"
             >
               ✕ CLOSE
             </button>
-
-            {/* ── HOTSPOT: DORMS ── */}
+            {/* Hotspots - positions match the mockup */}
+            {/* DORMS */}
             <div
               className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
               style={{ left: '48%', top: '20%', width: '15%', height: '20%' }}
-              onClick={() => { setModal('dorms'); openDorms(); }}
+              onClick={() => { setModal(null); openDorms(); }}
             >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100 transition-opacity">
-                DORMS
-              </span>
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">DORMS</span>
             </div>
-
-            {/* ── HOTSPOT: MARKET (50/30/20 game) ── */}
+            {/* MARKET */}
             <div
               className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
               style={{ left: '8%', top: '30%', width: '22%', height: '22%' }}
-              onClick={() => setModal('market')}
+              onClick={() => { setModal(null); setModal('market'); }}
             >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100 transition-opacity">
-                MARKET
-              </span>
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">MARKET</span>
             </div>
-
-            {/* ── HOTSPOT: UNIV. CAFÉ ── */}
+            {/* CAFE */}
             <div
               className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
               style={{ left: '55%', top: '42%', width: '18%', height: '22%' }}
-              onClick={openCafe}
+              onClick={() => { setModal(null); openCafe(); }}
             >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100 transition-opacity">
-                UNIV. CAFÉ
-              </span>
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">UNIV. CAFÉ</span>
             </div>
-
-            {/* ── HOTSPOT: CITY HALL (quiz) ── */}
+            {/* CITY HALL */}
             <div
               className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
               style={{ left: '55%', top: '5%', width: '18%', height: '18%' }}
-              onClick={openQuiz}
+              onClick={() => { setModal(null); openQuiz(); }}
             >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100 transition-opacity">
-                CITY HALL
-              </span>
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">CITY HALL</span>
             </div>
-
-            {/* ── HOTSPOT: ARCADE (Budget Tetris) ── */}
+            {/* BUDGET TETRIS */}
             <div
               className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
               style={{ left: '25%', top: '55%', width: '15%', height: '18%' }}
-              onClick={() => setModal('tetris')}
+              onClick={() => { setModal(null); setModal('tetris'); }}
             >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100 transition-opacity">
-                ARCADE
-              </span>
-            </div>
-
-            {/* ── Mini HUD inside submap ── */}
-            <div className="absolute bottom-4 left-4 z-10 pointer-events-none">
-              <div className="border-2 border-[#1a1a1a] bg-[rgba(10,10,10,0.80)] px-3 py-2 rounded font-pixel text-[9px] text-gold space-y-0.5">
-                <div>{state.avatar.emoji} {state.username || 'ADVENTURER'}</div>
-                <div>🪙 {state.gold.toLocaleString('en-IN')} · LV.{state.level}</div>
-              </div>
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">ARCADE</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          QUEST MODALS — rendered above budgeting city (z-[250])
-          Back button returns to budgeting city submap
-      ══════════════════════════════════════════════════════════════════════ */}
-
-      {/* Modal: Dorms (AI scenario) */}
+      {/* Modal: Dorms (Grok scenario) */}
       {modal === 'dorms' && (
-        <div
-          className="fixed inset-0 bg-black/85 flex items-center justify-center z-[250] p-4"
-          onClick={() => setModal('budgeting-city')}
-        >
-          <div
-            className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] rounded max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[200] p-4" onClick={() => setModal(null)}>
+          <div className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] rounded max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center p-4 border-b border-[var(--panel-border)]">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setModal('budgeting-city')}
-                  className="font-pixel text-[9px] text-[var(--text-muted)] hover:text-gold transition-colors"
-                >
-                  ← City
-                </button>
-                <span className="font-pixel text-gold">🏠 Dorms — Roommate Situation</span>
-              </div>
-              <button
-                onClick={() => setModal('budgeting-city')}
-                className="text-[var(--text-muted)] hover:text-red-500 text-xl"
-              >
-                ✕
-              </button>
+              <span className="font-pixel text-gold">🏠 Dorms — Roommate Situation</span>
+              <button onClick={() => setModal(null)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
             </div>
             <div className="p-6">
               <div className="mb-4">
-                <div className="font-pixel text-gold text-xs mb-2">
-                  {dormScenario?.character ?? 'Roommate Rahul'}:
-                </div>
+                <div className="font-pixel text-gold text-xs mb-2">{dormScenario?.character ?? 'Roommate Rahul'}:</div>
                 <p className="text-[var(--text)] text-sm leading-relaxed">
-                  {dormScenario?.situation ?? 'Loading scenario...'}
+                  {dormScenario?.situation ?? 'Loading scenario from Grok...'}
                 </p>
                 <div className="font-pixel text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/25 rounded px-3 py-2 mt-3">
                   [DECISION REQUIRED: Consider fairness, financial risk, and long-term roommate relationship.]
@@ -819,48 +622,35 @@ export default function GameView() {
                     <button
                       key={i}
                       onClick={() => dormChoice(i)}
-                      className="text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5 flex justify-between items-center transition-colors"
+                      className="text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5 flex justify-between items-center"
                     >
                       <span className="font-pixel text-gold text-xs">{choice}</span>
-                      <span className="text-sm text-[var(--text-muted)]">
-                        −₹{(dormScenario.costs[i] ?? 0).toLocaleString('en-IN')}
-                      </span>
+                      <span className="text-sm text-[var(--text-muted)]">−₹{(dormScenario.costs[i] ?? 0).toLocaleString('en-IN')}</span>
                     </button>
                   ))}
                 </div>
               ) : (
                 <div className="bg-green/10 border border-green/30 rounded p-4">
-                  <div className="font-pixel text-[var(--green-light)] text-xs mb-2">
-                    ✅ {dormOutcome.title}
-                  </div>
+                  <div className="font-pixel text-[var(--green-light)] text-xs mb-2">✅ {dormOutcome.title}</div>
                   <p className="text-sm text-[var(--text)] mb-4">{dormOutcome.text}</p>
                   <div className="flex gap-2 flex-wrap">
-                    <span className="font-pixel text-xs bg-blue-500/20 text-blue-200 px-2 py-1 rounded">
-                      +{dormOutcome.xp} XP
-                    </span>
-                    {dormOutcome.gold > 0 && (
-                      <span className="font-pixel text-xs bg-gold/20 text-gold px-2 py-1 rounded">
-                        +₹{dormOutcome.gold} Gold
-                      </span>
-                    )}
+                    <span className="font-pixel text-xs bg-blue-500/20 text-blue-200 px-2 py-1 rounded">+{dormOutcome.xp} XP</span>
+                    {dormOutcome.gold > 0 && <span className="font-pixel text-xs bg-gold/20 text-gold px-2 py-1 rounded">+₹{dormOutcome.gold} Gold</span>}
                   </div>
                   <div className="flex gap-2 mt-4 flex-wrap">
-                    <button
-                      onClick={() => sendTutor('Why is it risky to let my roommate delay UPI payment?')}
-                      className="font-pixel text-xs bg-green text-white px-3 py-1.5 rounded"
-                    >
+                    <button onClick={() => sendTutor('Why is it risky to let my roommate delay UPI payment?')} className="font-pixel text-xs bg-green text-white px-3 py-1.5 rounded">
                       🤖 Ask AI Tutor
                     </button>
                     <button
-                      onClick={() => { setDormOutcome(null); fetchDormScenario(); }}
+                      onClick={() => {
+                        setDormOutcome(null);
+                        fetchDormScenario();
+                      }}
                       className="font-pixel text-xs bg-blue-500/20 text-blue-200 border border-blue-500/40 px-3 py-1.5 rounded"
                     >
                       ♻️ New Scenario
                     </button>
-                    <button
-                      onClick={() => setModal('budgeting-city')}
-                      className="font-pixel text-xs bg-gold/15 text-gold border border-gold/30 px-3 py-1.5 rounded"
-                    >
+                    <button onClick={() => setModal(null)} className="font-pixel text-xs bg-gold/15 text-gold border border-gold/30 px-3 py-1.5 rounded">
                       ← Back to City
                     </button>
                   </div>
@@ -874,7 +664,7 @@ export default function GameView() {
       {/* Modal: Budget Tetris */}
       {modal === 'tetris' && (
         <BudgetTetris
-          onClose={() => setModal('budgeting-city')}
+          onClose={() => setModal(null)}
           onGameOver={(finalScore, clearedLines) => {
             const xpEarned = Math.min(150, Math.floor(finalScore / 100));
             if (xpEarned > 0 || clearedLines > 0) {
@@ -898,10 +688,9 @@ export default function GameView() {
         />
       )}
 
-      {/* Modal: Market — 50/30/20 Budget Game */}
       {modal === 'market' && (
         <BudgetGame
-          onClose={() => setModal('budgeting-city')}
+          onClose={() => setModal(null)}
           onComplete={(correct, xp, gold) => {
             setState(s => ({
               ...s,
@@ -916,7 +705,6 @@ export default function GameView() {
         />
       )}
 
-      {/* Active game: Café — renders above everything including budgeting city */}
       {activeGame === 'cafe' && (
         <CafeGame
           onClose={() => setActiveGame(null)}
@@ -933,7 +721,6 @@ export default function GameView() {
         />
       )}
 
-      {/* Active game: Quiz — renders above everything including budgeting city */}
       {activeGame === 'quiz' && (
         <QuizGame
           onClose={() => setActiveGame(null)}
@@ -950,48 +737,27 @@ export default function GameView() {
         />
       )}
 
-      {/* ── AI Tutor Panel ── */}
       {tutorOpen && (
         <div className="fixed right-0 top-0 bottom-0 w-full sm:w-96 bg-[rgba(5,15,35,0.97)] border-l-2 border-blue-500/50 z-[300] flex flex-col shadow-2xl">
           <div className="flex justify-between items-center p-4 border-b border-blue-500/30">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#0a1a2e] border border-gold/40 rounded-full overflow-hidden flex items-center justify-center">
-                <img
-                  src="/cat.png"
-                  alt="Aryan"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    (e.currentTarget.nextSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
-                  }}
-                />
-                <span className="text-lg hidden">🐱</span>
-              </div>
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">🤖</div>
               <div>
-                <div className="font-pixel text-[var(--blue-light)] text-xs">Aryan</div>
-                <div className="text-xs text-[var(--text-muted)]">Finance Cat · RAG + Groq</div>
+                <div className="font-pixel text-[var(--blue-light)] text-xs">Penny · AI Tutor</div>
+                <div className="text-xs text-[var(--text-muted)]">Socratic Guide · RAG + Grok</div>
               </div>
             </div>
-            <button
-              onClick={() => setTutorOpen(false)}
-              className="text-[var(--text-muted)] hover:text-red-500 text-xl"
-            >
-              ✕
-            </button>
+            <button onClick={() => setTutorOpen(false)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {tutorMessages.map((m, i) => (
               <div
                 key={i}
                 className={`p-3 rounded text-sm ${
-                  m.role === 'user'
-                    ? 'bg-green/10 border border-green/20 ml-6'
-                    : 'bg-blue-500/15 border border-blue-500/25'
+                  m.role === 'user' ? 'bg-green/10 border border-green/20 ml-6' : 'bg-blue-500/15 border border-blue-500/25'
                 }`}
               >
-                <div className="font-pixel text-xs mb-1 opacity-70">
-                  {m.role === 'user' ? 'You' : 'Aryan 🐱'}
-                </div>
+                <div className="font-pixel text-xs mb-1 opacity-70">{m.role === 'user' ? 'You' : 'AI Tutor'}</div>
                 {m.content}
               </div>
             ))}
@@ -999,11 +765,7 @@ export default function GameView() {
           <div className="p-4 border-t border-blue-500/30">
             <div className="flex gap-2 mb-2 flex-wrap">
               {['Why did I overspend?', '50/30/20 rule for ₹15k', 'Rent vs savings?', 'UPI limits'].map((q) => (
-                <button
-                  key={q}
-                  onClick={() => sendTutor(q)}
-                  className="font-pixel text-[10px] bg-blue-500/15 text-[var(--blue-light)] border border-blue-500/35 px-2 py-1 rounded"
-                >
+                <button key={q} onClick={() => sendTutor(q)} className="font-pixel text-[10px] bg-blue-500/15 text-[var(--blue-light)] border border-blue-500/35 px-2 py-1 rounded">
                   {q}
                 </button>
               ))}
@@ -1029,12 +791,7 @@ export default function GameView() {
         </div>
       )}
 
-      {/* ── Aryan Cat Intro ── */}
-      {showAryanIntro && (
-        <AryanIntro onClose={() => setShowAryanIntro(false)} />
-      )}
-
-      {/* ── Toast ── */}
+      {/* Toast */}
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 font-pixel text-xs bg-[var(--panel)] border border-[var(--panel-border)] text-gold px-6 py-3 rounded z-[500] animate-in fade-in duration-300">
           {toast}
