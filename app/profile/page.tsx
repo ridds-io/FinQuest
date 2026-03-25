@@ -1,171 +1,256 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'finquest_state';
 
-function loadState() {
-  if (typeof window === 'undefined')
-    return {
-      avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
-      gold: 15000,
-      gems: 50,
-      level: 1,
-      xp: 250,
-      questsDone: 0,
-      budgetProgress: 0,
-    };
-  try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    if (s) return JSON.parse(s);
-  } catch {}
-  return {
+type FinancialProfile = {
+  monthlyIncome: number;
+  incomeLabel: string;
+  livingSituation: string;
+  primaryGoal: string;
+  riskTolerance: string;
+};
+
+type GameProfileState = {
+  avatar: { emoji: string; name: string; type: string };
+  username: string;
+  financialProfile: FinancialProfile;
+  gold: number;
+  gems: number;
+  level: number;
+  xp: number;
+  totalXp: number;
+  earnedBadges: string[];
+  perfectBudgetGame: boolean;
+  tetrisCorrect: number;
+  tutorQuestions: number;
+  quizCorrect: number;
+  cafeResists: number;
+  dilemmasCompleted: number;
+  consecutiveBest: number;
+  streak_days: number;
+  hp: number;
+  questsDone: number;
+  budgetProgress: number;
+  tokens?: number;
+};
+
+const XP_THRESHOLDS = [0, 500, 1200, 2500, 4500, 7500, 11000, 15500, 21000, 28000] as const;
+
+function getLevelFromTotalXp(totalXp: number): number {
+  let level = 1;
+  for (let i = 1; i < XP_THRESHOLDS.length; i += 1) {
+    if (totalXp >= XP_THRESHOLDS[i]) level = i + 1;
+  }
+  return Math.min(10, level);
+}
+
+function getXpProgress(totalXp: number) {
+  const level = getLevelFromTotalXp(totalXp);
+  const lower = XP_THRESHOLDS[level - 1] ?? 0;
+  const upper = XP_THRESHOLDS[level] ?? lower;
+  const xpIntoLevel = Math.max(0, totalXp - lower);
+  const xpNeeded = Math.max(0, upper - lower);
+  const pct = xpNeeded <= 0 ? 100 : Math.min(100, Math.round((xpIntoLevel / xpNeeded) * 100));
+  return { level, xpIntoLevel, xpNeeded, pct };
+}
+
+type BadgeDef = { id: string; icon: string; name: string; description: string };
+
+const ALL_BADGES: BadgeDef[] = [
+  { id: 'first_quest', icon: '🎮', name: 'First Quest', description: 'Complete your first quest step set.' },
+  { id: 'budget_master', icon: '💰', name: 'Budget Master', description: 'Achieve perfect Budget Game results.' },
+  { id: 'tetris_3', icon: '🧱', name: 'Tetris Trainer', description: 'Place correctly enough to earn 10+ Tetris correct placements.' },
+  { id: 'tutor_5', icon: '🤖', name: 'Tutor Seeker', description: 'Ask Penny (5+) questions.' },
+  { id: 'level_3', icon: '⭐', name: 'Level 3', description: 'Reach Level 3.' },
+  { id: 'level_5', icon: '🌟', name: 'Level 5', description: 'Reach Level 5.' },
+  { id: 'quiz_ace', icon: '🧠', name: 'Quiz Ace', description: 'Answer 5+ quiz questions correctly.' },
+  { id: 'saver', icon: '🏦', name: 'Saver', description: 'Earn 10+ Cafe resist XP.' },
+  { id: 'dilemma_5', icon: '⚔️', name: 'Dilemma Starter', description: 'Complete 5+ financial dilemmas.' },
+  { id: 'dilemma_best', icon: '🏆', name: 'Best Streak', description: 'Pick the best choice 3 times in a row.' },
+  { id: 'streak_3', icon: '🔥', name: 'Streak 3', description: 'Maintain a streak day counter of 3+ (if tracked).' },
+  { id: 'completionist', icon: '💎', name: 'Completionist', description: 'Reach 100% budget completion progress.' },
+];
+
+function loadState(): GameProfileState {
+  const defaults: GameProfileState = {
     avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
+    username: 'ADVENTURER',
+    financialProfile: {
+      monthlyIncome: 17500,
+      incomeLabel: '₹15,000-20,000',
+      livingSituation: 'Living at Home',
+      primaryGoal: 'Learn to Save',
+      riskTolerance: 'Conservative',
+    },
     gold: 15000,
     gems: 50,
     level: 1,
-    xp: 250,
+    xp: 25,
+    totalXp: 25,
+    earnedBadges: [],
+    perfectBudgetGame: false,
+    tetrisCorrect: 0,
+    tutorQuestions: 0,
+    quizCorrect: 0,
+    cafeResists: 0,
+    dilemmasCompleted: 0,
+    consecutiveBest: 0,
+    streak_days: 0,
+    hp: 80,
     questsDone: 0,
     budgetProgress: 0,
+    tokens: 0,
   };
+
+  try {
+    if (typeof window === 'undefined') return defaults;
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw) as Partial<GameProfileState>;
+
+    return {
+      ...defaults,
+      ...parsed,
+      financialProfile: { ...defaults.financialProfile, ...(parsed.financialProfile ?? {}) },
+      earnedBadges: Array.isArray(parsed.earnedBadges) ? parsed.earnedBadges : [],
+      totalXp: typeof parsed.totalXp === 'number' ? parsed.totalXp : typeof parsed.xp === 'number' ? parsed.xp : defaults.totalXp,
+    };
+  } catch {
+    return defaults;
+  }
 }
 
-const BADGES = [
-  { id: 'first', icon: '🎮', name: 'First Quest', earned: true },
-  { id: 'budget', icon: '💰', name: 'Budget Master', earned: false },
-  { id: 'investor', icon: '📈', name: 'Investor', earned: false },
-  { id: 'debt', icon: '🏦', name: 'Debt Slayer', earned: false },
-  { id: 'streak', icon: '⚡', name: 'Streak 7', earned: false },
-  { id: 'quiz', icon: '🧠', name: 'Quiz Ace', earned: false },
-];
-
 export default function ProfilePage() {
-  const [state, setState] = useState(loadState());
+  const [profile, setProfile] = useState<GameProfileState>(() => loadState());
 
   useEffect(() => {
-    setState(loadState());
+    setProfile(loadState());
   }, []);
 
-  const xpForLevel = 1000;
-  const xpInLevel = state.xp % xpForLevel;
-  const xpPct = Math.min(100, (xpInLevel / xpForLevel) * 100);
+  const derived = useMemo(() => getXpProgress(profile.totalXp), [profile.totalXp]);
+  const effectiveLevel = derived.level;
+  const pctRounded = Math.max(0, Math.min(100, Math.round(derived.pct / 5) * 5));
+  const widthClassMap: Record<number, string> = {
+    0: 'w-0',
+    5: 'w-[5%]',
+    10: 'w-[10%]',
+    15: 'w-[15%]',
+    20: 'w-[20%]',
+    25: 'w-[25%]',
+    30: 'w-[30%]',
+    35: 'w-[35%]',
+    40: 'w-[40%]',
+    45: 'w-[45%]',
+    50: 'w-[50%]',
+    55: 'w-[55%]',
+    60: 'w-[60%]',
+    65: 'w-[65%]',
+    70: 'w-[70%]',
+    75: 'w-[75%]',
+    80: 'w-[80%]',
+    85: 'w-[85%]',
+    90: 'w-[90%]',
+    95: 'w-[95%]',
+    100: 'w-full',
+  };
+  const widthClass = widthClassMap[pctRounded] ?? 'w-0';
 
   return (
-    <div className="min-h-screen bg-[var(--dark)] p-4 sm:p-8">
-      <div className="max-w-4xl mx-auto">
-        <Link
-          href="/game"
-          className="inline-block font-pixel text-xs text-[var(--text-muted)] border border-white/20 px-4 py-2 rounded mb-6 hover:text-gold hover:border-gold transition"
-        >
-          ← Back to Game
-        </Link>
+    <div className="min-h-screen bg-gradient-to-b from-[#0a0e1a] to-[#0a1a0a] px-4 py-10">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-start justify-between gap-6 flex-col sm:flex-row">
+          <div className="w-full sm:w-[360px]">
+            <div className="bg-[rgba(10,20,40,0.70)] border-2 border-[rgba(255,215,0,0.25)] rounded-lg p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded bg-green-800 border-2 border-gray-600 flex items-center justify-center text-3xl">
+                  {profile.avatar.emoji}
+                </div>
+                <div>
+                  <div className="font-pixel text-[#FFD700] text-sm uppercase">{profile.username || profile.avatar.name}</div>
+                  <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-0.5">Class: {profile.avatar.name}</div>
+                </div>
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Left column: avatar + stats + achievements */}
-          <div className="space-y-4">
-            <div className="bg-white/5 border border-gold/20 rounded-lg p-6">
-              <div className="text-6xl text-center mb-4">{state.avatar.emoji}</div>
-              <div className="font-pixel text-gold text-center text-sm mb-1">{state.avatar.name}</div>
-              <div className="font-pixel text-xs text-[var(--text-muted)] text-center mb-6">
-                Level {state.level} · {state.avatar.type}
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <div className="font-pixel text-[10px] text-[#FFD700] uppercase">
+                  Level {effectiveLevel}
+                  <span className="text-[var(--text-muted)] ml-2">
+                    ({derived.xpIntoLevel}/{derived.xpNeeded} XP)
+                  </span>
+                </div>
+                <div className="mt-2 h-2 bg-black/40 border border-white/10 rounded overflow-hidden">
+                  <div className={`h-full bg-gold/80 ${widthClass}`} />
+                </div>
+                <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">
+                  Total XP: {profile.totalXp.toLocaleString('en-IN')}
+                </div>
               </div>
-              <div className="space-y-2">
-                {[
-                  { label: 'Gold', value: `₹${state.gold.toLocaleString('en-IN')}` },
-                  { label: 'Gems', value: state.gems },
-                  { label: 'XP', value: `${state.xp % xpForLevel} / ${xpForLevel}` },
-                  { label: 'Streak', value: '3 days 🔥' },
-                  { label: 'Quests Done', value: state.questsDone },
-                  { label: 'Avatar Type', value: state.avatar.type },
-                ].map((row) => (
-                  <div key={row.label} className="flex justify-between items-center text-sm border-b border-white/5 py-1">
-                    <span className="text-[var(--text-muted)]">{row.label}</span>
-                    <span className="font-pixel text-xs text-gold">{row.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-white/5 border border-gold/20 rounded-lg p-6">
-              <div className="font-pixel text-sm text-[var(--text)] mb-4">🏆 Achievements</div>
-              <div className="grid grid-cols-3 gap-2">
-                {BADGES.map((b) => (
-                  <div
-                    key={b.id}
-                    className={`p-3 rounded text-center border ${
-                      b.earned ? 'border-gold/40 bg-gold/10' : 'border-white/10 bg-white/5'
-                    }`}
-                  >
-                    <span className="text-2xl block mb-1">{b.icon}</span>
-                    <div className={`font-pixel text-[10px] ${b.earned ? 'text-gold' : 'text-[var(--text-muted)]'}`}>
-                      {b.name}
-                    </div>
-                  </div>
-                ))}
+
+              <div className="mt-5">
+                <div className="font-pixel text-[#FFD700] text-[10px] uppercase">Your Financial Profile</div>
+                <div className="mt-3 space-y-2 text-[11px]">
+                  <div className="font-pixel text-[9px] text-[var(--text-muted)]">Monthly Income</div>
+                  <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.monthlyIncome.toLocaleString('en-IN')}</div>
+
+                  <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">Living Situation</div>
+                  <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.livingSituation}</div>
+
+                  <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">Primary Goal</div>
+                  <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.primaryGoal}</div>
+
+                  <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">Risk Tolerance</div>
+                  <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.riskTolerance}</div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right: module progress + 50/30/20 */}
-          <div className="md:col-span-2 space-y-4">
-            <div className="bg-white/5 border border-gold/20 rounded-lg p-6">
-              <div className="font-pixel text-sm text-[var(--text)] mb-4">📚 Module Progress</div>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm text-[var(--text-muted)] mb-1">
-                    <span>🏘️ Budgeting City</span>
-                    <span>{state.budgetProgress}%</span>
-                  </div>
-                  <div className="h-2 bg-black/40 rounded overflow-hidden">
+          <div className="w-full">
+            <div className="bg-[rgba(5,12,8,0.55)] border-2 border-white/10 rounded-lg p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <div className="flex items-center justify-between gap-4">
+                <div className="font-pixel text-[#FFD700] text-xs uppercase">🏅 Badges</div>
+                <div className="font-pixel text-[9px] text-[var(--text-muted)]">
+                  {profile.earnedBadges.length}/{ALL_BADGES.length} earned
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {ALL_BADGES.map((b) => {
+                  const earned = profile.earnedBadges.includes(b.id);
+                  return (
                     <div
-                      className="h-full bg-green-500 rounded"
-                      style={{ width: `${state.budgetProgress}%` }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm text-[var(--text-muted)] mb-1">
-                    <span>🏗️ Investment Tower</span>
-                    <span>0% — Locked</span>
-                  </div>
-                  <div className="h-2 bg-black/40 rounded overflow-hidden">
-                    <div className="h-full bg-gray-600 rounded w-0" />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-sm text-[var(--text-muted)] mb-1">
-                    <span>🏛️ Loan Bank</span>
-                    <span>0% — Locked</span>
-                  </div>
-                  <div className="h-2 bg-black/40 rounded overflow-hidden">
-                    <div className="h-full bg-gray-600 rounded w-0" />
-                  </div>
-                </div>
+                      key={b.id}
+                      title={`${b.name}: ${b.description}`}
+                      className={[
+                        'rounded-lg border-2 p-3',
+                        'transition-all cursor-default',
+                        earned ? 'border-[#FFD700] bg-[#FFD700]/10 text-[#FFD700]' : 'border-white/10 bg-white/5 text-[var(--text-muted)] opacity-60 grayscale',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-pixel text-sm">{b.icon}</div>
+                        <div className="font-pixel text-[9px]">{earned ? '✓' : '🔒'}</div>
+                      </div>
+                      <div className="font-pixel text-[9px] text-[var(--text)] mt-2">{b.name}</div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-            <div className="bg-white/5 border border-gold/20 rounded-lg p-6">
-              <div className="font-pixel text-sm text-[var(--text)] mb-4">💡 50/30/20 Budget Health</div>
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div className="text-center p-4 rounded bg-red-500/10 border border-red-500/30">
-                  <div className="font-pixel text-lg text-red-400">35%</div>
-                  <div className="font-pixel text-[10px] text-[var(--text-muted)] mt-1">NEEDS</div>
-                </div>
-                <div className="text-center p-4 rounded bg-blue-500/10 border border-blue-500/30">
-                  <div className="font-pixel text-lg text-blue-300">15%</div>
-                  <div className="font-pixel text-[10px] text-[var(--text-muted)] mt-1">WANTS</div>
-                </div>
-                <div className="text-center p-4 rounded bg-green-500/10 border border-green-500/30">
-                  <div className="font-pixel text-lg text-[var(--green-light)]">50%</div>
-                  <div className="font-pixel text-[10px] text-[var(--text-muted)] mt-1">SAVINGS</div>
-                </div>
+
+              <div className="mt-5 text-[11px] text-[var(--text-muted)] font-pixel text-[9px]">
+                Tip: hover badges to see their descriptions.
               </div>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                Play Budget Tetris in Budgeting City to update your real spending breakdown.
-              </p>
             </div>
           </div>
+        </div>
+
+        <div className="mt-6 text-[var(--text-muted)] text-[10px] font-pixel">
+          Progress updates unlock new badges as you play.
         </div>
       </div>
     </div>
   );
 }
+

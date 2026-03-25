@@ -408,6 +408,7 @@ export default function MainGameView() {
       <div className="flex-1 flex min-h-0">
         <QuestSidebar
           entries={sidebarEntries}
+          tutorTips={[]}
           questsDone={sidebarEntries.filter(
             (e) => e.kind === 'quest' && e.steps.every((s) => s.done),
           ).length}

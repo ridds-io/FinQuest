@@ -38,7 +38,7 @@ export async function queryRAG(
   context: GameState,
   history: Message[] = []
 ): Promise<string> {
-  const systemPrompt = `You are Aryan, the AI financial mentor in FinQuest — a game for Indian college students in Pune.
+  const systemPrompt = `You are Penny, the AI financial mentor in FinQuest — a game for Indian college students in Pune.
 
 PERSONALITY:
 - Talk like a smart, friendly senior who has been through it all
@@ -87,6 +87,20 @@ INDIAN CONTEXT:
   }
 
   // Build messages: system → history → current question (with RAG context)
+  const fp = (context as unknown as { financialProfile?: {
+    monthlyIncome?: number;
+    incomeLabel?: string;
+    livingSituation?: string;
+    primaryGoal?: string;
+    riskTolerance?: string;
+  } }).financialProfile;
+
+  const fpBlock = fp
+    ? `\n[Financial Profile]\n- Income: ${fp.incomeLabel ?? fp.monthlyIncome ?? 'N/A'}\n- Living: ${
+        fp.livingSituation ?? 'N/A'
+      }\n- Goal: ${fp.primaryGoal ?? 'N/A'}\n- Risk: ${fp.riskTolerance ?? 'N/A'}`
+    : '';
+
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: systemPrompt },
     ...history.map(m => ({
@@ -95,7 +109,7 @@ INDIAN CONTEXT:
     })),
     {
       role: 'user' as const,
-      content: `${query}\n[Level: ${context.level}, Gold: Rs ${context.gold}]${ragContext}`,
+      content: `${query}\n[Level: ${context.level}, Gold: Rs ${context.gold}]${fpBlock}${ragContext}`,
     },
   ];
 

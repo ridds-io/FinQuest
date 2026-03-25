@@ -89,15 +89,39 @@ export async function generateScenario(input: ScenarioInput): Promise<GeneratedS
     % SCENARIO_TYPES.length
   ];
 
+  const fp = (input.playerState as unknown as {
+    financialProfile?: {
+      livingSituation?: string;
+      primaryGoal?: string;
+      riskTolerance?: string;
+      monthlyIncome?: number;
+    };
+  }).financialProfile;
+
+  const livingSituation = fp?.livingSituation ?? 'N/A';
+  const primaryGoal = fp?.primaryGoal ?? 'N/A';
+  const riskTolerance = fp?.riskTolerance ?? 'N/A';
+
   const prompt = `Generate a JSON financial dilemma for an Indian college student in Pune.
 Scenario type: ${scenarioType} — ${SCENARIO_DESCRIPTIONS[scenarioType]}
 Player state: Level ${input.playerState.level}, Gold Rs ${input.playerState.gold}, Avatar: ${input.playerState.avatar}
+Financial profile:
+- Monthly income: ${fp?.monthlyIncome ?? 'N/A'}
+- Living situation: ${livingSituation}
+- Primary goal: ${primaryGoal}
+- Risk tolerance: ${riskTolerance}
 
 The scenario must:
 - Be about "${SCENARIO_DESCRIPTIONS[scenarioType]}" specifically — NOT about anything else
 - Feature a realistic Indian student situation with specific Rs amounts
 - Have 3 meaningfully different choices (not just variations of the same choice)
 - Have real financial consequences — one option should be clearly better long-term but harder short-term
+- The BEST financial choice should be randomly option A, B, or C (do not always make option C the best)
+- Vary outcomes meaningfully — the worst option should have clear negative consequences
+- If living situation is "Living at Home", do NOT include PG rent or roommate rent-splitting; use home/family-related money pressure instead
+- If living situation is "Rented Flat", include rent but avoid PG-specific details
+- If living situation is "College Dorms" or "PG/Hostel", rent/UPI payment decisions are allowed
+- Outcomes[x] must correspond to choices[x] (A=0, B=1, C=2). Ensure the randomly chosen best option gets xp=100 (and the best-lesson/gold), and the other options get xp=60 and xp=30 (mid/worst) — regardless of which letter is best.
 
 Respond with ONLY valid JSON, no markdown:
 {
@@ -106,9 +130,9 @@ Respond with ONLY valid JSON, no markdown:
   "choices": ["Choice A text", "Choice B text", "Choice C text"],
   "costs": [number, number, number],
   "outcomes": [
-    {"xp": 30, "gold": -2000, "lesson": "one sentence financial lesson"},
-    {"xp": 60, "gold": -500, "lesson": "one sentence financial lesson"},
-    {"xp": 100, "gold": 200, "lesson": "one sentence financial lesson"}
+    {"xp": 30, "gold": 0, "lesson": "one sentence financial lesson"},
+    {"xp": 60, "gold": 150, "lesson": "one sentence financial lesson"},
+    {"xp": 100, "gold": 300, "lesson": "one sentence financial lesson"}
   ]
 }`.trim();
 
@@ -130,20 +154,42 @@ Respond with ONLY valid JSON, no markdown:
     }
     return parsed;
   } catch {
+    const bestIdx = Math.floor(Math.random() * 3);
+    const midIdx = (bestIdx + 1) % 3;
+    const worstIdx = (bestIdx + 2) % 3;
+
+    const mkOutcome = (idx: number) => {
+      const isBest = idx === bestIdx;
+      const isMid = idx === midIdx;
+      const xp = isBest ? 100 : isMid ? 60 : 30;
+      const gold = isBest ? 300 : isMid ? 150 : 0;
+      const lesson = isBest
+        ? 'Long-term stability comes from cost optimization plus clear, documented decisions.'
+        : isMid
+          ? 'Good choices reduce conflict and improve cash-flow predictability.'
+          : 'Short-term convenience can break budgets—protect cash flow with clear boundaries.';
+      return { xp, gold, lesson };
+    };
+
+    const isHome = livingSituation === 'Living at Home';
     return {
-      situation: 'Your roommate says they’ll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?',
-      character: 'Rahul, your roommate',
+      situation: isHome
+        ? 'Your family asks for extra monthly help due to an unexpected home expense. What do you do?'
+        : 'Your roommate says they’ll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?',
+      character: isHome ? 'Mom/Dad, your family' : 'Rahul, your roommate',
       choices: [
-        'Agree to split ₹6k/₹4k + Spotify — you pay ₹4,075/month',
-        'Equal split ₹5k each. Decline Spotify.',
-        'Equal split after using NoBroker discount — ~₹4,500 each',
+        isHome
+          ? 'Send money quickly but delay your savings for a month'
+          : 'Agree to split ₹6k/₹4k + Spotify — you pay ₹4,075/month',
+        isHome
+          ? 'Split support with a budget plan and keep a small emergency buffer'
+          : 'Equal split ₹5k each. Decline Spotify.',
+        isHome
+          ? 'Negotiate a lower amount and schedule payments with reminders'
+          : 'Equal split after using NoBroker discount — ~₹4,500 each',
       ],
-      costs: [4075, 5000, 4500],
-      outcomes: [
-        { debt: 0, skill: 'none', xp: 30, gold: 0, lesson: 'Late payments break budgets—set clear UPI deadlines to protect cash flow and friendships.' },
-        { xp: 60, gold: 150, lesson: 'Clear, documented splits reduce conflict and make monthly budgeting predictable.' },
-        { xp: 100, gold: 300, lesson: 'Optimize the total cost first (discounts/negotiation), then split fairly for the best long-term outcome.' },
-      ],
+      costs: [4000, 5000, 4500],
+      outcomes: [mkOutcome(0), mkOutcome(1), mkOutcome(2)],
     };
   }
 }

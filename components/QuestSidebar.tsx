@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 export type QuestStep = {
   label: string;
@@ -62,23 +62,19 @@ export function makeTutorEntry(text: string): SidebarEntry {
 
 type QuestSidebarProps = {
   entries: SidebarEntry[];
+  tutorTips: string[];
   questsDone: number;
   onAskTutor: (q: string) => void;
 };
 
-export function QuestSidebar({ entries, questsDone, onAskTutor }: QuestSidebarProps) {
+export function QuestSidebar({ entries, tutorTips, questsDone, onAskTutor }: QuestSidebarProps) {
   const tutorRef = useRef<HTMLDivElement | null>(null);
-
-  const tutorEntries = useMemo(
-    () => entries.filter((e) => e.kind === 'tutor') as Extract<SidebarEntry, { kind: 'tutor' }>[],
-    [entries],
-  );
 
   useEffect(() => {
     if (tutorRef.current) {
       tutorRef.current.scrollTop = tutorRef.current.scrollHeight;
     }
-  }, [tutorEntries.length]);
+  }, [tutorTips.length]);
 
   const quests = entries.filter((e) => e.kind === 'quest') as Extract<SidebarEntry, { kind: 'quest' }>[];
 
@@ -146,18 +142,18 @@ export function QuestSidebar({ entries, questsDone, onAskTutor }: QuestSidebarPr
         <section>
           <div className="font-pixel text-[9px] text-blue-400/80 mb-2 tracking-widest">TUTOR INSIGHTS</div>
           <div ref={tutorRef} className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
-            {tutorEntries.length === 0 ? (
+            {tutorTips.length === 0 ? (
               <div className="text-[10px] text-[var(--text-muted)] italic px-1">
-                Ask a question to see Penny's insights here.
+                Ask Penny a question to see financial tips here.
               </div>
             ) : (
-              tutorEntries.map((t) => (
-                <div key={t.id} className="border border-blue-800/40 bg-blue-900/10 rounded-md px-2.5 py-2">
+              tutorTips.map((tip, i) => (
+                <div key={`${tip}-${i}`} className="border border-blue-800/40 bg-blue-900/10 rounded-md px-2.5 py-2">
                   <div className="flex items-center gap-1 mb-1">
-                    <span className="text-[10px]">🤖</span>
-                    <span className="font-pixel text-[8px] text-blue-400/80">Penny · AI Tutor</span>
+                    <span className="text-[10px]">💡</span>
+                    <span className="font-pixel text-[8px] text-blue-400/80">Penny's Tip</span>
                   </div>
-                  <p className="text-[10px] text-[var(--text)] leading-relaxed">{t.text}</p>
+                  <p className="text-[10px] text-[var(--text)] leading-relaxed">{tip}</p>
                 </div>
               ))
             )}

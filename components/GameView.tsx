@@ -8,7 +8,6 @@ import {
   QuestSidebar,
   QUEST_DEFINITIONS,
   INITIAL_TIPS,
-  makeTutorEntry,
   type SidebarEntry,
 } from '@/components/QuestSidebar';
 
@@ -30,44 +29,117 @@ const AVATARS = [
 
 const STORAGE_KEY = 'finquest_state';
 
+type FinancialProfile = {
+  monthlyIncome: number;
+  incomeLabel: string;
+  livingSituation: string;
+  primaryGoal: string;
+  riskTolerance: string;
+};
+
+const INCOME_OPTIONS: Array<{ label: string; monthlyIncome: number }> = [
+  { label: 'Under ₹5,000', monthlyIncome: 2500 },
+  { label: '₹5,000-10,000', monthlyIncome: 7500 },
+  { label: '₹10,000-15,000', monthlyIncome: 12500 },
+  { label: '₹15,000-20,000', monthlyIncome: 17500 },
+  { label: 'Above ₹20,000', monthlyIncome: 25000 },
+];
+
+const LIVING_OPTIONS = ['Living at Home', 'PG/Hostel', 'Rented Flat', 'College Dorms'] as const;
+const GOAL_OPTIONS = ['Learn to Save', 'Manage Debt', 'Start Investing', 'General Literacy'] as const;
+const RISK_OPTIONS = ['Conservative', 'Moderate', 'Aggressive'] as const;
+
+const XP_THRESHOLDS = [0, 500, 1200, 2500, 4500, 7500, 11000, 15500, 21000, 28000] as const;
+
+function getLevelFromTotalXp(totalXp: number): number {
+  let level = 1;
+  for (let i = 1; i < XP_THRESHOLDS.length; i += 1) {
+    if (totalXp >= XP_THRESHOLDS[i]) level = i + 1;
+  }
+  return Math.min(10, level);
+}
+
+function getXpProgress(totalXp: number) {
+  const level = getLevelFromTotalXp(totalXp);
+  const lower = XP_THRESHOLDS[level - 1];
+  const upper = XP_THRESHOLDS[level] ?? lower;
+  const xpIntoLevel = Math.max(0, totalXp - lower);
+  const xpNeeded = Math.max(0, upper - lower);
+  const pct = xpNeeded <= 0 ? 100 : Math.min(100, Math.round((xpIntoLevel / xpNeeded) * 100));
+  return { level, xpIntoLevel, xpNeeded, pct };
+}
+
 function loadState(): {
   avatar: { emoji: string; name: string; type: string };
   username: string;
+  financialProfile: FinancialProfile;
   gold: number;
   gems: number;
   level: number;
   xp: number;
+  totalXp: number;
+  earnedBadges: string[];
+  perfectBudgetGame: boolean;
+  tetrisCorrect: number;
+  tutorQuestions: number;
+  quizCorrect: number;
+  cafeResists: number;
+  dilemmasCompleted: number;
+  consecutiveBest: number;
+  streak_days: number;
   hp: number;
   questsDone: number;
   budgetProgress: number;
 } {
-  if (typeof window === 'undefined')
-    return {
-      avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
-      username: 'ADVENTURER',
-      gold: 15000,
-      gems: 50,
-      level: 1,
-      xp: 25,
-      hp: 80,
-      questsDone: 0,
-      budgetProgress: 0,
-    };
-  try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    if (s) return JSON.parse(s);
-  } catch {}
-  return {
+  const defaults = {
     avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
     username: 'ADVENTURER',
+    financialProfile: {
+      monthlyIncome: 17500,
+      incomeLabel: '₹15,000-20,000',
+      livingSituation: 'Living at Home',
+      primaryGoal: 'Learn to Save',
+      riskTolerance: 'Conservative',
+    },
     gold: 15000,
     gems: 50,
     level: 1,
     xp: 25,
+    totalXp: 25,
+    earnedBadges: [],
+    perfectBudgetGame: false,
+    tetrisCorrect: 0,
+    tutorQuestions: 0,
+    quizCorrect: 0,
+    cafeResists: 0,
+    dilemmasCompleted: 0,
+    consecutiveBest: 0,
+    streak_days: 0,
     hp: 80,
     questsDone: 0,
     budgetProgress: 0,
   };
+
+  if (typeof window === 'undefined') return defaults;
+
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) {
+      const parsed = JSON.parse(s) as Partial<ReturnType<typeof loadState>> & { totalXp?: number };
+      const totalXp = parsed.totalXp ?? parsed.xp ?? defaults.totalXp;
+      return {
+        ...defaults,
+        ...parsed,
+        totalXp,
+        financialProfile: {
+          ...defaults.financialProfile,
+          ...(parsed.financialProfile ?? {}),
+        },
+      };
+    }
+  } catch {}
+
+  return defaults;
 }
 
 function saveState(state: ReturnType<typeof loadState>) {
@@ -76,11 +148,11 @@ function saveState(state: ReturnType<typeof loadState>) {
   } catch {}
 }
 
-// ── Aryan Cat Tutor Intro ──────────────────────────────────────────────────
-function AryanIntro({ onClose }: { onClose: () => void }) {
+// ── Penny Cat Tutor Intro ──────────────────────────────────────────────────
+function PennyIntro({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState(0);
   const lines = [
-    "Hey there! I'm Aryan — your nerdy finance cat. 🐱",
+    "Hey there! I'm Penny — your nerdy finance cat. 🐱",
     "Money can feel confusing, but don't worry — we'll figure it out together.",
     "Let's learn a few simple tricks to make your money work smarter.",
     "Explore the city, click on buildings, and make financial decisions.",
@@ -103,7 +175,7 @@ function AryanIntro({ onClose }: { onClose: () => void }) {
           <div className="w-16 h-16 rounded-full border-2 border-gold/50 overflow-hidden bg-[#0a1a2e] flex items-center justify-center">
             <img
               src="/cat.png"
-              alt="Aryan"
+              alt="Penny"
               className="w-full h-full object-cover"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
@@ -112,7 +184,7 @@ function AryanIntro({ onClose }: { onClose: () => void }) {
             />
             <span className="text-3xl hidden">🐱</span>
           </div>
-          <div className="font-pixel text-[8px] text-gold">ARYAN</div>
+          <div className="font-pixel text-[8px] text-gold">PENNY</div>
         </div>
 
         {/* Dialogue */}
@@ -163,10 +235,40 @@ export default function GameView() {
       return '';
     }
   });
+
+  const [step1IncomeLabel, setStep1IncomeLabel] = useState<string>(() => {
+    try {
+      return loadState().financialProfile.incomeLabel;
+    } catch {
+      return INCOME_OPTIONS[3].label;
+    }
+  });
+  const [step1LivingSituation, setStep1LivingSituation] = useState<string>(() => {
+    try {
+      return loadState().financialProfile.livingSituation;
+    } catch {
+      return LIVING_OPTIONS[0];
+    }
+  });
+  const [step1PrimaryGoal, setStep1PrimaryGoal] = useState<string>(() => {
+    try {
+      return loadState().financialProfile.primaryGoal;
+    } catch {
+      return GOAL_OPTIONS[0];
+    }
+  });
+  const [step1RiskTolerance, setStep1RiskTolerance] = useState<string>(() => {
+    try {
+      return loadState().financialProfile.riskTolerance;
+    } catch {
+      return RISK_OPTIONS[0];
+    }
+  });
   const [sidebarEntries, setSidebarEntries] = useState<SidebarEntry[]>([
     ...QUEST_DEFINITIONS,
     ...INITIAL_TIPS,
   ]);
+  const [tutorTips, setTutorTips] = useState<string[]>([]);
   const [toast, setToast] = useState('');
 
   // Navigation: null = world map, 'budgeting-city' = submap, 'dorms'/'market'/'tetris' = quest modals
@@ -174,9 +276,13 @@ export default function GameView() {
   // Active game (cafe/quiz) — rendered on top of everything
   const [activeGame, setActiveGame] = useState<null | 'cafe' | 'quiz'>(null);
 
-  // Aryan intro — show once when entering game screen
-  const [showAryanIntro, setShowAryanIntro] = useState(false);
-  const aryanShownRef = useRef(false);
+  const [previousModal, setPreviousModal] = useState<string | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [debugHotspots, setDebugHotspots] = useState(false);
+
+  // Penny intro — show once when entering game screen
+  const [showPennyIntro, setShowPennyIntro] = useState(false);
+  const pennyShownRef = useRef(false);
 
   const [dormScenario, setDormScenario] = useState<{
     situation: string;
@@ -186,6 +292,7 @@ export default function GameView() {
     outcomes: Array<{ xp?: number; gold?: number; debt?: number; lesson?: string }>;
   } | null>(null);
   const [dormOutcome, setDormOutcome] = useState<{ title: string; text: string; xp: number; gold: number } | null>(null);
+  const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<Array<{ role: string; content: string }>>([
     { role: 'ai', content: "Namaste! I'm your Socratic financial guide. What financial situation are you navigating today?" },
@@ -202,11 +309,11 @@ export default function GameView() {
     persist();
   }, [state, persist]);
 
-  // Show Aryan intro once when entering game screen
+  // Show Penny intro once when entering game screen
   useEffect(() => {
-    if (screen === 'game' && !aryanShownRef.current) {
-      aryanShownRef.current = true;
-      setTimeout(() => setShowAryanIntro(true), 600);
+    if (screen === 'game' && !pennyShownRef.current) {
+      pennyShownRef.current = true;
+      setTimeout(() => setShowPennyIntro(true), 600);
     }
   }, [screen]);
 
@@ -215,8 +322,66 @@ export default function GameView() {
     setTimeout(() => setToast(''), 2500);
   }, []);
 
-  const addTutorToSidebar = useCallback((text: string) => {
-    setSidebarEntries((prev) => [...prev, makeTutorEntry(text)]);
+  // Debug: toggle hotspot borders with Ctrl+D
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.ctrlKey) return;
+      if (e.key.toLowerCase() !== 'd') return;
+      e.preventDefault();
+      setDebugHotspots((v) => !v);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  const lastLevelRef = useRef(state.level);
+  useEffect(() => {
+    if (state.level <= lastLevelRef.current) return;
+    if (state.level === 5) showToast('⭐ Level Up to 5! 🌟 Investment Tower unlocked!');
+    else if (state.level === 10) showToast('⭐ Level Up to 10! 🌟 Loan Bank unlocked!');
+    else showToast(`⭐ Level Up! You are now Level ${state.level}.`);
+    lastLevelRef.current = state.level;
+  }, [state.level, showToast]);
+
+  // Badges: check on every meaningful state change.
+  useEffect(() => {
+    const ALL_BADGES: Array<{
+      id: string;
+      icon: string;
+      name: string;
+      condition: (s: typeof state) => boolean;
+    }> = [
+      { id: 'first_quest', icon: '🎮', name: 'First Quest', condition: (s) => s.questsDone >= 1 },
+      { id: 'budget_master', icon: '💰', name: 'Budget Master', condition: (s) => s.perfectBudgetGame === true },
+      { id: 'tetris_3', icon: '🧱', name: 'Tetris Trainer', condition: (s) => s.tetrisCorrect >= 10 },
+      { id: 'tutor_5', icon: '🤖', name: 'Tutor Seeker', condition: (s) => s.tutorQuestions >= 5 },
+      { id: 'level_3', icon: '⭐', name: 'Level 3', condition: (s) => s.level >= 3 },
+      { id: 'level_5', icon: '🌟', name: 'Level 5', condition: (s) => s.level >= 5 },
+      { id: 'quiz_ace', icon: '🧠', name: 'Quiz Ace', condition: (s) => s.quizCorrect >= 5 },
+      { id: 'saver', icon: '🏦', name: 'Saver', condition: (s) => s.cafeResists >= 10 },
+      { id: 'dilemma_5', icon: '⚔️', name: 'Dilemma Starter', condition: (s) => s.dilemmasCompleted >= 5 },
+      { id: 'dilemma_best', icon: '🏆', name: 'Best Streak', condition: (s) => s.consecutiveBest >= 3 },
+      { id: 'streak_3', icon: '🔥', name: 'Streak 3', condition: (s) => s.streak_days >= 3 },
+      { id: 'completionist', icon: '💎', name: 'Completionist', condition: (s) => s.budgetProgress >= 100 },
+    ];
+
+    const newlyUnlocked = ALL_BADGES.filter((b) => b.condition(state) && !state.earnedBadges.includes(b.id));
+    if (newlyUnlocked.length === 0) return;
+
+    const ids = newlyUnlocked.map((b) => b.id);
+    setState((prev) => ({
+      ...prev,
+      earnedBadges: Array.from(new Set([...prev.earnedBadges, ...ids])),
+    }));
+
+    showToast(`🏅 ${newlyUnlocked[0].icon} Unlocked: ${newlyUnlocked[0].name}`);
+  }, [state, showToast]);
+
+  const extractTip = useCallback((text: string) => {
+    // Extract a short “first-sentence” hint for the sidebar.
+    const first = text.split('.').map((s) => s.trim()).filter(Boolean)[0] ?? text.trim();
+    const compact = first.length > 100 ? `${first.slice(0, 97)}...` : first;
+    return compact.length >= 20 ? compact : '';
   }, []);
 
   const markQuestStep = useCallback((questId: string, stepIndex: number) => {
@@ -243,13 +408,25 @@ export default function GameView() {
   };
 
   const startGame = () => {
+    const cleaned = welcomeUsername.trim();
+    const username = cleaned ? cleaned.toUpperCase().slice(0, 14) : 'ADVENTURER';
+    setState((s) => ({ ...s, username }));
     setScreen('game');
   };
 
   const beginQuest = () => {
-    const cleaned = welcomeUsername.trim();
-    const username = cleaned ? cleaned.toUpperCase().slice(0, 14) : 'ADVENTURER';
-    setState((s) => ({ ...s, username }));
+    const monthlyIncome =
+      INCOME_OPTIONS.find((o) => o.label === step1IncomeLabel)?.monthlyIncome ?? INCOME_OPTIONS[3].monthlyIncome;
+
+    const financialProfile: FinancialProfile = {
+      monthlyIncome,
+      incomeLabel: step1IncomeLabel,
+      livingSituation: step1LivingSituation,
+      primaryGoal: step1PrimaryGoal,
+      riskTolerance: step1RiskTolerance,
+    };
+
+    setState((s) => ({ ...s, financialProfile }));
     setScreen('avatar');
   };
 
@@ -270,7 +447,12 @@ export default function GameView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           module: 'budgeting_1',
-          playerState: { gold: state.gold, level: state.level, avatar: state.avatar.type },
+          playerState: {
+            gold: state.gold,
+            level: state.level,
+            avatar: state.avatar.type,
+            financialProfile: state.financialProfile,
+          },
         }),
       });
       const data = await res.json();
@@ -301,17 +483,21 @@ export default function GameView() {
 
   const openDorms = () => {
     setDormOutcome(null);
+    setSelectedChoice(null);
     fetchDormScenario();
+    setPreviousModal('budgeting-city');
     setModal('dorms');
   };
 
   const openBudgetingCity = () => {
     setModal('budgeting-city');
+    setPreviousModal(null);
     markQuestStep('q-budget-basics', 0);
   };
 
   // These open games ON TOP of the budgeting city submap
   const openCafe = () => {
+    setPreviousModal('budgeting-city');
     setActiveGame('cafe');
   };
 
@@ -321,6 +507,7 @@ export default function GameView() {
 
   const dormChoice = (i: number) => {
     if (!dormScenario) return;
+    setSelectedChoice(i);
     const cost = dormScenario.costs[i] ?? 0;
     const out = dormScenario.outcomes[i] ?? {};
     const xp = out.xp ?? 0;
@@ -328,9 +515,13 @@ export default function GameView() {
     setState((s) => ({
       ...s,
       gold: Math.max(0, s.gold + gold),
-      xp: s.xp + xp,
+      totalXp: s.totalXp + xp,
+      xp: getXpProgress(s.totalXp + xp).xpIntoLevel,
+      level: getXpProgress(s.totalXp + xp).level,
       questsDone: s.questsDone + 1,
       budgetProgress: Math.min(100, s.budgetProgress + 33),
+      dilemmasCompleted: s.dilemmasCompleted + 1,
+      consecutiveBest: xp === 100 ? s.consecutiveBest + 1 : 0,
     }));
     setDormOutcome({
       title: `Option ${String.fromCharCode(65 + i)}`,
@@ -355,7 +546,13 @@ export default function GameView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: msg,
-          gameState: { gold: state.gold, level: state.level, avatar: state.avatar, xp: state.xp },
+          gameState: {
+            gold: state.gold,
+            level: state.level,
+            avatar: state.avatar,
+            xp: state.xp,
+            financialProfile: state.financialProfile,
+          },
           history: tutorMessages
             .slice(-6)
             .map(m => ({
@@ -367,7 +564,11 @@ export default function GameView() {
       const data = await res.json();
       const reply = data.question || "I couldn't connect. Try again!";
       setTutorMessages((m) => [...m, { role: 'ai', content: reply }]);
-      addTutorToSidebar(reply);
+      setState((s) => ({ ...s, tutorQuestions: s.tutorQuestions + 1 }));
+      const tip = extractTip(reply);
+      if (tip) {
+        setTutorTips((prev) => [...prev.slice(-4), tip]);
+      }
       markQuestStep('q-budget-basics', 2);
       markQuestStep('q-roommate', 2);
     } catch {
@@ -411,6 +612,15 @@ export default function GameView() {
             Welcome to FinQuest — A Monetary Odyssey
           </div>
 
+          {/* Onboarding Step Indicator */}
+          <div className="w-full max-w-xl mb-8">
+            <div className="font-pixel text-xs text-gold mb-2 text-center">Step 1 of 2</div>
+            <div className="flex gap-2">
+              <div className="flex-1 h-2 rounded bg-gold/35" />
+              <div className="flex-1 h-2 rounded bg-white/10" />
+            </div>
+          </div>
+
           {/* Info cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 w-full max-w-5xl mb-8">
             <div className="bg-black/30 border border-white/10 rounded-lg p-5 hover:border-gold/30 transition-colors">
@@ -433,26 +643,77 @@ export default function GameView() {
             </div>
           </div>
 
-          {/* Username input */}
-          <div className="w-full max-w-xl bg-black/30 border border-white/10 rounded-lg p-5">
-            <label className="font-pixel text-xs text-[var(--text-muted)] block mb-2">
-              Choose your username
-            </label>
-            <input
-              type="text"
-              value={welcomeUsername}
-              onChange={(e) => setWelcomeUsername(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && beginQuest()}
-              placeholder="e.g. SANJANA"
-              className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
-              maxLength={14}
-            />
-            <button
-              onClick={beginQuest}
-              className="mt-4 w-full font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1 transition-transform"
-            >
-              Begin Quest →
-            </button>
+          {/* Financial Profile (Step 1) */}
+          <div className="w-full max-w-xl bg-[rgba(10,20,40,0.92)] border-2 border-[rgba(255,215,0,0.35)] rounded-lg p-5">
+            <div className="font-pixel text-gold text-xs mb-3 text-center">⚔️ Your Financial Profile</div>
+            <div className="space-y-4">
+              <div>
+                <label className="font-pixel text-[10px] text-[var(--text-muted)] block mb-2">Monthly Income</label>
+                <select
+                  value={step1IncomeLabel}
+                  onChange={(e) => setStep1IncomeLabel(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+                >
+                  {INCOME_OPTIONS.map((o) => (
+                    <option key={o.label} value={o.label}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-pixel text-[10px] text-[var(--text-muted)] block mb-2">Living Situation</label>
+                <select
+                  value={step1LivingSituation}
+                  onChange={(e) => setStep1LivingSituation(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+                >
+                  {LIVING_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-pixel text-[10px] text-[var(--text-muted)] block mb-2">Primary Goal</label>
+                <select
+                  value={step1PrimaryGoal}
+                  onChange={(e) => setStep1PrimaryGoal(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+                >
+                  {GOAL_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-pixel text-[10px] text-[var(--text-muted)] block mb-2">Risk Tolerance</label>
+                <select
+                  value={step1RiskTolerance}
+                  onChange={(e) => setStep1RiskTolerance(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+                >
+                  {RISK_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={beginQuest}
+                className="w-full font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1 transition-transform border border-gold/30"
+              >
+                Next →
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -469,10 +730,31 @@ export default function GameView() {
         >
           ← Back
         </button>
+        <div className="w-full max-w-xl mb-4">
+          <div className="font-pixel text-xs text-gold mb-2 text-center">Step 2 of 2</div>
+          <div className="flex gap-2">
+            <div className="flex-1 h-2 rounded bg-gold/35" />
+            <div className="flex-1 h-2 rounded bg-gold/35" />
+          </div>
+        </div>
         <h1 className="font-pixel text-gold text-center mb-2">Choose Your Avatar</h1>
         <p className="text-[var(--text-muted)] text-center mb-8 max-w-lg">
           Your starting financial situation shapes your adventure. No judgment — every path teaches different lessons.
         </p>
+
+        {/* Username (Step 2) */}
+        <div className="w-full max-w-xl bg-black/30 border border-white/10 rounded-lg p-5 mb-8">
+          <label className="font-pixel text-xs text-[var(--text-muted)] block mb-2">Choose your username</label>
+          <input
+            type="text"
+            value={welcomeUsername}
+            onChange={(e) => setWelcomeUsername(e.target.value)}
+            placeholder="e.g. SANJANA"
+            className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+            maxLength={14}
+          />
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 max-w-4xl w-full mb-8">
           {AVATARS.map((a, i) => (
             <button
@@ -503,12 +785,13 @@ export default function GameView() {
   // ── GAME SCREEN ────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 flex flex-col bg-[#16213e] overflow-hidden">
-      {/* ── Aryan Intro (Shows Once) ── */}
-      {showAryanIntro && <AryanIntro onClose={() => setShowAryanIntro(false)} />}
+      {/* ── Penny Intro (Shows Once) ── */}
+      {showPennyIntro && <PennyIntro onClose={() => setShowPennyIntro(false)} />}
 
       <div className="flex-1 flex min-h-0">
         <QuestSidebar
           entries={sidebarEntries}
+          tutorTips={tutorTips}
           questsDone={sidebarEntries.filter(
             (e) => e.kind === 'quest' && e.steps.every((s) => s.done),
           ).length}
@@ -525,16 +808,41 @@ export default function GameView() {
             <img
               src="/map/world-map.png"
               alt="FinQuest World Map"
-              className="w-full h-full object-cover select-none"
+              className={`w-full h-full object-cover select-none transition-opacity ${mapLoaded ? 'opacity-100' : 'opacity-0'}`}
               draggable={false}
               style={{ imageRendering: 'pixelated' }}
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              onLoad={() => setMapLoaded(true)}
+              onError={() => setMapLoaded(false)}
             />
+
+            {/* Map fallback when world-map.png fails */}
+            {!mapLoaded && (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(0,255,100,0.25),transparent_55%),linear-gradient(180deg,#0a0e1a_0%,#0a1a0a_100%)] pointer-events-none">
+                <div className="absolute" style={{ left: '8%', top: '40%' }}>
+                  <div className="text-2xl">🏘️</div>
+                  <div className="font-pixel text-[9px] text-white bg-black/60 px-2 py-1 rounded">Budgeting City</div>
+                </div>
+                <div className="absolute" style={{ left: '54%', top: '6%' }}>
+                  <div className="text-2xl">🏗️</div>
+                  <div className="font-pixel text-[9px] text-white bg-black/60 px-2 py-1 rounded">Investment Tower</div>
+                </div>
+                <div className="absolute" style={{ left: '33%', top: '28%' }}>
+                  <div className="text-2xl">⛲</div>
+                  <div className="font-pixel text-[9px] text-white bg-black/60 px-2 py-1 rounded">Central Plaza</div>
+                </div>
+                <div className="absolute" style={{ left: '58%', top: '52%' }}>
+                  <div className="text-2xl">🏛️</div>
+                  <div className="font-pixel text-[9px] text-white bg-black/60 px-2 py-1 rounded">Loan Bank</div>
+                </div>
+              </div>
+            )}
 
             {/* ── HOTSPOT: Budgeting City ── */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 border-transparent hover:border-yellow-400/40 transition-all duration-200 flex items-end justify-center pb-2"
-              style={{ left: '12%', top: '42%', width: '20%', height: '28%' }}
+              className={`absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 transition-all duration-200 flex items-end justify-center pb-2 ${
+                debugHotspots ? 'border-red-500 bg-red-500/30' : 'border-transparent hover:border-yellow-400/40'
+              }`}
+              style={{ left: '8%', top: '40%', width: '24%', height: '35%' }}
               onClick={openBudgetingCity}
             >
               <span className="font-pixel text-[9px] text-white bg-black/60 px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
@@ -544,15 +852,25 @@ export default function GameView() {
 
             {/* ── HOTSPOT: Investment Tower (locked) ── */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl border-2 border-transparent hover:border-yellow-400/20 transition-all duration-200 opacity-60"
-              style={{ left: '55%', top: '8%', width: '22%', height: '35%' }}
-              onClick={() => showToast('🔒 Complete Budgeting City to unlock Investment Tower!')}
+              className={`absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl border-2 transition-all duration-200 opacity-60 ${
+                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/20'
+              }`}
+              style={{ left: '54%', top: '6%', width: '24%', height: '40%' }}
+              onClick={() => {
+                if (state.level >= 5) {
+                  showToast('🏗️ Investment Tower unlocked!');
+                } else {
+                  showToast(`🔒 Investment Tower unlocks at Level 5. You are Level ${state.level}.`);
+                }
+              }}
             />
 
             {/* ── HOTSPOT: Central Plaza (quiz) ── */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 border-transparent hover:border-yellow-400/40 transition-all duration-200 flex items-end justify-center pb-2"
-              style={{ left: '35%', top: '28%', width: '18%', height: '22%' }}
+              className={`absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 transition-all duration-200 flex items-end justify-center pb-2 ${
+                debugHotspots ? 'border-red-500 bg-red-500/30' : 'border-transparent hover:border-yellow-400/40'
+              }`}
+              style={{ left: '33%', top: '28%', width: '22%', height: '25%' }}
               onClick={openQuiz}
             >
               <span className="font-pixel text-[9px] text-white bg-black/60 px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
@@ -562,9 +880,17 @@ export default function GameView() {
 
             {/* ── HOTSPOT: Loan Bank (locked) ── */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl opacity-60"
-              style={{ left: '60%', top: '55%', width: '20%', height: '28%' }}
-              onClick={() => showToast('🔒 Complete Budgeting City to unlock Loan Bank!')}
+              className={`absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl border-2 transition-all duration-200 opacity-60 ${
+                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/20'
+              }`}
+              style={{ left: '58%', top: '52%', width: '22%', height: '32%' }}
+              onClick={() => {
+                if (state.level >= 10) {
+                  showToast('🏛️ Loan Bank unlocked!');
+                } else {
+                  showToast(`🔒 Loan Bank unlocks at Level 10. You are Level ${state.level}.`);
+                }
+              }}
             />
           </div>
 
@@ -635,7 +961,7 @@ export default function GameView() {
                 className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 hover:shadow-none hover:translate-y-[4px] transition-all"
               >
                 <span>🐱</span>
-                <span className="font-pixel text-[9px] text-green-400">ARYAN</span>
+                <span className="font-pixel text-[9px] text-green-400">PENNY</span>
               </button>
             </div>
 
@@ -683,9 +1009,9 @@ export default function GameView() {
             {/* ── Back to World Map button ── */}
             <button
               onClick={() => setModal(null)}
-              className="absolute top-4 left-4 font-pixel text-xs bg-black/80 border border-white/30 text-white px-3 py-2 rounded z-10 hover:bg-black/95 hover:border-gold/60 transition-all flex items-center gap-2"
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 font-pixel text-[9px] bg-black/70 border border-gold/40 text-gold px-4 py-2 rounded z-10 hover:bg-black/95 hover:border-gold/60 transition-all flex items-center gap-2"
             >
-              ← World Map
+              ← Back to FinQuest World Map
             </button>
 
             {/* ── City title ── */}
@@ -708,9 +1034,11 @@ export default function GameView() {
 
             {/* ── HOTSPOT: DORMS ── */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
-              style={{ left: '48%', top: '20%', width: '15%', height: '20%' }}
-              onClick={() => { setModal('dorms'); openDorms(); }}
+              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${
+                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
+              }`}
+              style={{ left: '46%', top: '18%', width: '18%', height: '22%' }}
+              onClick={openDorms}
             >
               <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100 transition-opacity">
                 DORMS
@@ -719,9 +1047,14 @@ export default function GameView() {
 
             {/* ── HOTSPOT: MARKET (50/30/20 game) ── */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
-              style={{ left: '8%', top: '30%', width: '22%', height: '22%' }}
-              onClick={() => setModal('market')}
+              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${
+                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
+              }`}
+              style={{ left: '8%', top: '28%', width: '26%', height: '28%' }}
+              onClick={() => {
+                setPreviousModal('budgeting-city');
+                setModal('market');
+              }}
             >
               <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100 transition-opacity">
                 MARKET
@@ -730,8 +1063,10 @@ export default function GameView() {
 
             {/* ── HOTSPOT: UNIV. CAFÉ ── */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
-              style={{ left: '55%', top: '42%', width: '18%', height: '22%' }}
+              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${
+                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
+              }`}
+              style={{ left: '52%', top: '40%', width: '22%', height: '26%' }}
               onClick={openCafe}
             >
               <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100 transition-opacity">
@@ -741,8 +1076,10 @@ export default function GameView() {
 
             {/* ── HOTSPOT: CITY HALL (quiz) ── */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
-              style={{ left: '55%', top: '5%', width: '18%', height: '18%' }}
+              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${
+                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
+              }`}
+              style={{ left: '52%', top: '4%', width: '22%', height: '18%' }}
               onClick={openQuiz}
             >
               <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100 transition-opacity">
@@ -754,7 +1091,10 @@ export default function GameView() {
             <div
               className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1"
               style={{ left: '25%', top: '55%', width: '15%', height: '18%' }}
-              onClick={() => setModal('tetris')}
+              onClick={() => {
+                setPreviousModal('budgeting-city');
+                setModal('tetris');
+              }}
             >
               <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100 transition-opacity">
                 ARCADE
@@ -777,35 +1117,11 @@ export default function GameView() {
           Back button returns to budgeting city submap
       ══════════════════════════════════════════════════════════════════════ */}
 
-      {/* Active Top-Level Games (Cafe, Quiz) */}
-      {activeGame === 'cafe' && (
-        <CafeGame
-          onClose={() => setActiveGame(null)}
-          onComplete={(xpEarned) => {
-            setState((s) => ({ ...s, xp: s.xp + xpEarned }));
-            showToast(`+${xpEarned} XP earned in the Café! ☕`);
-          }}
-        />
-      )}
-      {activeGame === 'quiz' && (
-        <QuizGame
-          onClose={() => setActiveGame(null)}
-          onComplete={(res) => {
-            setState((s) => ({
-              ...s,
-              xp: s.xp + res.xpEarned,
-              gold: s.gold + res.goldEarned,
-            }));
-            showToast(`+${res.xpEarned} XP, +₹${res.goldEarned} earned in Quiz! 🧠`);
-          }}
-        />
-      )}
-
       {/* Modal: Dorms (AI scenario) */}
       {modal === 'dorms' && (
         <div
           className="fixed inset-0 bg-black/85 flex items-center justify-center z-[250] p-4"
-          onClick={() => setModal('budgeting-city')}
+          onClick={() => { setModal(previousModal); setPreviousModal(null); }}
         >
           <div
             className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] rounded max-w-2xl w-full max-h-[90vh] overflow-y-auto"
@@ -814,15 +1130,15 @@ export default function GameView() {
             <div className="flex justify-between items-center p-4 border-b border-[var(--panel-border)]">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setModal('budgeting-city')}
+                  onClick={() => { setModal(previousModal); setPreviousModal(null); }}
                   className="font-pixel text-[9px] text-[var(--text-muted)] hover:text-gold transition-colors"
                 >
                   ← City
                 </button>
-                <span className="font-pixel text-gold">🏠 Dorms — Roommate Situation</span>
+                <span className="font-pixel text-gold">🏠 Dorms — Financial Dilemma</span>
               </div>
               <button
-                onClick={() => setModal('budgeting-city')}
+                onClick={() => { setModal(previousModal); setPreviousModal(null); }}
                 className="text-[var(--text-muted)] hover:text-red-500 text-xl"
               >
                 ✕
@@ -837,26 +1153,37 @@ export default function GameView() {
                   {dormScenario?.situation ?? 'Loading scenario...'}
                 </p>
                 <div className="font-pixel text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/25 rounded px-3 py-2 mt-3">
-                  [DECISION REQUIRED: Consider fairness, financial risk, and long-term roommate relationship.]
+                  [DECISION REQUIRED: With {state.financialProfile.riskTolerance} risk tolerance, pick the choice that protects long-term cash flow.]
                 </div>
               </div>
-              {!dormOutcome ? (
-                <div className="grid gap-3">
-                  {dormScenario?.choices?.map((choice, i) => (
+              <div className="grid gap-3">
+                {dormScenario?.choices?.map((choice, i) => {
+                  const selected = selectedChoice === i;
+                  const disabled = selectedChoice !== null && !selected;
+                  return (
                     <button
                       key={i}
+                      disabled={disabled}
                       onClick={() => dormChoice(i)}
-                      className="text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5 flex justify-between items-center transition-colors"
+                      className={`text-left p-4 rounded border transition-colors flex justify-between items-center ${
+                        selected
+                          ? 'border-green-500/60 bg-green-500/10'
+                          : disabled
+                            ? 'border-white/10 bg-white/5 opacity-60 cursor-not-allowed'
+                            : 'border-white/15 hover:border-gold bg-white/5'
+                      }`}
                     >
                       <span className="font-pixel text-gold text-xs">{choice}</span>
                       <span className="text-sm text-[var(--text-muted)]">
                         −₹{(dormScenario.costs[i] ?? 0).toLocaleString('en-IN')}
                       </span>
                     </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-green/10 border border-green/30 rounded p-4">
+                  );
+                })}
+              </div>
+
+              {dormOutcome && selectedChoice !== null && (
+                <div className="bg-green/10 border border-green/30 rounded p-4 mt-4">
                   <div className="font-pixel text-[var(--green-light)] text-xs mb-2">
                     ✅ {dormOutcome.title}
                   </div>
@@ -871,24 +1198,37 @@ export default function GameView() {
                       </span>
                     )}
                   </div>
+
                   <div className="flex gap-2 mt-4 flex-wrap">
                     <button
-                      onClick={() => sendTutor('Why is it risky to let my roommate delay UPI payment?')}
+                      onClick={() => {
+                        const situationSummary = (dormScenario?.situation ?? '').slice(0, 180);
+                        const chosenOption = dormScenario?.choices?.[selectedChoice] ?? '';
+                        sendTutor(
+                          `Scenario: "${situationSummary}". I chose: "${chosenOption}". Was this the best financial decision? What should I consider next time?`,
+                        );
+                      }}
                       className="font-pixel text-xs bg-green text-white px-3 py-1.5 rounded"
                     >
-                      🤖 Ask AI Tutor
+                      🤖 Ask Penny About This
                     </button>
+
                     <button
-                      onClick={() => { setDormOutcome(null); fetchDormScenario(); }}
+                      onClick={() => {
+                        setDormOutcome(null);
+                        setSelectedChoice(null);
+                        fetchDormScenario();
+                      }}
                       className="font-pixel text-xs bg-blue-500/20 text-blue-200 border border-blue-500/40 px-3 py-1.5 rounded"
                     >
                       ♻️ New Scenario
                     </button>
+
                     <button
-                      onClick={() => setModal('budgeting-city')}
+                      onClick={() => { setModal(previousModal); setPreviousModal(null); }}
                       className="font-pixel text-xs bg-gold/15 text-gold border border-gold/30 px-3 py-1.5 rounded"
                     >
-                      ← Back to City
+                      ← Back to Budgeting City
                     </button>
                   </div>
                 </div>
@@ -901,17 +1241,21 @@ export default function GameView() {
       {/* Modal: BudgetGame (Market) */}
       {modal === 'market' && (
         <BudgetGame
-          onClose={() => setModal('budgeting-city')}
+          onClose={() => { setModal(previousModal); setPreviousModal(null); }}
           onComplete={(score, xpEarned, goldEarned) => {
             setState((s) => ({
               ...s,
-              xp: s.xp + xpEarned,
+                totalXp: s.totalXp + xpEarned,
+                xp: getXpProgress(s.totalXp + xpEarned).xpIntoLevel,
+                level: getXpProgress(s.totalXp + xpEarned).level,
               gold: s.gold + goldEarned,
               budgetProgress: Math.min(100, s.budgetProgress + 34),
+                perfectBudgetGame: s.perfectBudgetGame || score >= 12,
             }));
             showToast(`+${xpEarned} XP, +₹${goldEarned} earned in the Market! 🛒`);
             markQuestStep('q-budget-basics', 1);
-            setModal('budgeting-city');
+            setModal(previousModal);
+            setPreviousModal(null);
           }}
         />
       )}
@@ -919,21 +1263,22 @@ export default function GameView() {
       {/* Modal: Budget Tetris */}
       {modal === 'tetris' && (
         <BudgetTetris
-          onClose={() => setModal('budgeting-city')}
-          onGameOver={(finalScore, clearedLines) => {
-            const xpEarned = Math.min(150, Math.floor(finalScore / 100));
-            if (xpEarned > 0 || clearedLines > 0) {
+          onClose={() => { setModal(previousModal); setPreviousModal(null); }}
+          monthlyIncome={state.financialProfile.monthlyIncome ?? 15000}
+          onGameOver={(finalScore, correctPlacements, totalBlocks) => {
+            const xpEarned = correctPlacements; // 1 XP per correct placement
+            if (xpEarned > 0) {
               setState((s) => ({
                 ...s,
-                xp: s.xp + xpEarned,
+                  totalXp: s.totalXp + xpEarned,
+                  xp: getXpProgress(s.totalXp + xpEarned).xpIntoLevel,
+                  level: getXpProgress(s.totalXp + xpEarned).level,
                 gold: s.gold + xpEarned * 2,
                 questsDone: s.questsDone + 1,
                 budgetProgress: Math.min(100, s.budgetProgress + 20),
+                  tetrisCorrect: s.tetrisCorrect + correctPlacements,
               }));
-              addTutorToSidebar(
-                `Budget Tetris: cleared ${clearedLines} line(s), saved virtual ₹${finalScore.toLocaleString('en-IN')}.`
-              );
-              if (clearedLines >= 3) {
+              if (correctPlacements >= 3) {
                 markQuestStep('q-tetris', 0);
                 markQuestStep('q-tetris', 1);
               }
@@ -966,14 +1311,19 @@ export default function GameView() {
         <CafeGame
           onClose={() => setActiveGame(null)}
           onComplete={(xpEarned) => {
+            const resistApprox = Math.max(0, Math.round(xpEarned / 15));
+            const xpAdjusted = resistApprox * 15;
             setState((s) => ({
               ...s,
-              xp: s.xp + xpEarned,
+              totalXp: s.totalXp + xpAdjusted,
+              xp: getXpProgress(s.totalXp + xpAdjusted).xpIntoLevel,
+              level: getXpProgress(s.totalXp + xpAdjusted).level,
               gold: s.gold + Math.floor(xpEarned * 2),
               questsDone: s.questsDone + 1,
               budgetProgress: Math.min(100, s.budgetProgress + 20),
+              cafeResists: s.cafeResists + resistApprox,
             }));
-            showToast(`+${xpEarned} XP earned! ☕`);
+            showToast(`+${xpAdjusted} XP earned! ☕`);
           }}
         />
       )}
@@ -983,14 +1333,18 @@ export default function GameView() {
         <QuizGame
           onClose={() => setActiveGame(null)}
           onComplete={(result) => {
+            const xpAdjusted = result.correct * 50;
             setState((s) => ({
               ...s,
-              xp: s.xp + result.xpEarned,
+              totalXp: s.totalXp + xpAdjusted,
+              xp: getXpProgress(s.totalXp + xpAdjusted).xpIntoLevel,
+              level: getXpProgress(s.totalXp + xpAdjusted).level,
               gold: s.gold + result.goldEarned,
               questsDone: s.questsDone + 1,
               budgetProgress: Math.min(100, s.budgetProgress + 10),
+              quizCorrect: s.quizCorrect + result.correct,
             }));
-            showToast(`🏛️ Quiz complete! +${result.xpEarned} XP`);
+            showToast(`🏛️ Quiz complete! +${xpAdjusted} XP`);
           }}
         />
       )}
@@ -1003,7 +1357,7 @@ export default function GameView() {
               <div className="w-8 h-8 bg-[#0a1a2e] border border-gold/40 rounded-full overflow-hidden flex items-center justify-center">
                 <img
                   src="/cat.png"
-                  alt="Aryan"
+                  alt="Penny"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
@@ -1013,7 +1367,7 @@ export default function GameView() {
                 <span className="text-lg hidden">🐱</span>
               </div>
               <div>
-                <div className="font-pixel text-[var(--blue-light)] text-xs">Aryan</div>
+                <div className="font-pixel text-[var(--blue-light)] text-xs">Penny</div>
                 <div className="text-xs text-[var(--text-muted)]">Finance Cat · RAG + Groq</div>
               </div>
             </div>
@@ -1035,7 +1389,7 @@ export default function GameView() {
                 }`}
               >
                 <div className="font-pixel text-xs mb-1 opacity-70">
-                  {m.role === 'user' ? 'You' : 'Aryan 🐱'}
+                  {m.role === 'user' ? 'You' : 'Penny 🐱'}
                 </div>
                 {m.content}
               </div>
@@ -1074,9 +1428,9 @@ export default function GameView() {
         </div>
       )}
 
-      {/* ── Aryan Cat Intro ── */}
-      {showAryanIntro && (
-        <AryanIntro onClose={() => setShowAryanIntro(false)} />
+      {/* ── Penny Cat Intro ── */}
+      {showPennyIntro && (
+        <PennyIntro onClose={() => setShowPennyIntro(false)} />
       )}
 
       {/* ── Toast ── */}

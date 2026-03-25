@@ -20,17 +20,17 @@ interface Expense {
 
 const HARDCODED_EXPENSES: Expense[] = [
   { id: 'rent',      icon: '🏠', name: 'PG Rent',       amount: 5000, correct: 'needs',   description: 'Monthly Pune PG' },
-  { id: 'groceries', icon: '🛒', name: 'Groceries',     amount: 2000, correct: 'needs',   description: 'Weekly supplies' },
+  { id: 'groceries', icon: '🛒', name: 'Groceries',     amount: 2000, correct: 'needs',   description: 'Weekly food' },
   { id: 'mobile',    icon: '📱', name: 'Mobile Bill',   amount: 299,  correct: 'needs',   description: 'Jio recharge' },
-  { id: 'bus',       icon: '🚌', name: 'Bus/Ola',       amount: 800,  correct: 'needs',   description: 'Daily commute' },
-  { id: 'textbooks', icon: '📚', name: 'Textbooks',     amount: 600,  correct: 'needs',   description: 'Sem materials' },
-  { id: 'chai',      icon: '☕', name: 'Daily Chai',    amount: 600,  correct: 'wants',   description: '₹20/day × 30' },
-  { id: 'ott',       icon: '🎬', name: 'Netflix/OTT',  amount: 499,  correct: 'wants',   description: 'Entertainment' },
-  { id: 'dining',    icon: '🍕', name: 'Eating Out',    amount: 800,  correct: 'wants',   description: 'Weekend treats' },
-  { id: 'gaming',    icon: '🎮', name: 'Game Credits',  amount: 300,  correct: 'wants',   description: 'Battle passes' },
-  { id: 'gym',       icon: '💪', name: 'Gym Fee',       amount: 500,  correct: 'wants',   description: 'Campus gym' },
-  { id: 'sip',       icon: '📈', name: 'SIP Fund',      amount: 2000, correct: 'savings', description: 'Monthly invest' },
-  { id: 'emergency', icon: '🚨', name: 'Emergency',     amount: 1000, correct: 'savings', description: 'Safety buffer' },
+  { id: 'bus',       icon: '🚌', name: 'Bus/Auto',      amount: 800,  correct: 'needs',   description: 'Commute' },
+  { id: 'textbooks', icon: '📚', name: 'Textbooks',    amount: 600,  correct: 'needs',   description: 'Sem books' },
+  { id: 'chai',      icon: '☕', name: 'Daily Chai',    amount: 600,  correct: 'wants',   description: '₹20 × 30' },
+  { id: 'ott',       icon: '🎬', name: 'OTT Apps',      amount: 499,  correct: 'wants',   description: 'Streaming' },
+  { id: 'dining',    icon: '🍕', name: 'Eating Out',    amount: 800,  correct: 'wants',   description: 'Weekends' },
+  { id: 'gaming',    icon: '🎮', name: 'Game Credits',  amount: 300,  correct: 'wants',   description: 'In-app' },
+  { id: 'gym',       icon: '💪', name: 'Gym Fee',       amount: 500,  correct: 'wants',   description: 'Fitness' },
+  { id: 'sip',       icon: '📈', name: 'SIP Fund',      amount: 2000, correct: 'savings', description: 'Investment' },
+  { id: 'emergency', icon: '🚨', name: 'Emergency',     amount: 1000, correct: 'savings', description: 'Safety net' },
 ];
 
 const TOTAL_INCOME = 15000;
@@ -127,11 +127,11 @@ export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/85 flex items-center justify-center z-[200] p-2 sm:p-4"
+      className="fixed inset-0 bg-black/90 flex flex-col z-[200]"
       onClick={onClose}
     >
       <div
-        className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] rounded-lg w-full max-w-3xl max-h-[95vh] overflow-y-auto"
+        className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] w-full h-full overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -147,7 +147,7 @@ export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
         </div>
 
         {!result ? (
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-4 overflow-y-auto">
             {loadingExpenses && (
               <div className="bg-black/30 rounded-lg p-3 border border-white/10">
                 <div className="font-pixel text-[10px] text-[var(--text-muted)] text-center">
@@ -197,7 +197,7 @@ export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
                     onDragOver={e => { e.preventDefault(); setDragOver(cat); }}
                     onDragLeave={() => setDragOver(null)}
                     onDrop={e => onDrop(e, cat)}
-                    className={`rounded-lg border-2 border-dashed min-h-[120px] p-2 transition-all ${
+                    className={`rounded-lg border-2 border-dashed min-h-[200px] p-2 transition-all ${
                       isOver
                         ? 'border-gold bg-gold/10 scale-[1.02]'
                         : `${cfg.color} ${cfg.bg}`
@@ -328,14 +328,12 @@ function ExpenseChip({
     <div
       draggable
       onDragStart={() => onDragStart(exp.id, from)}
-      className="group flex items-center gap-1.5 bg-white/8 border border-white/15 rounded px-2 py-1.5 cursor-grab active:cursor-grabbing hover:border-gold/60 hover:bg-white/12 transition-all select-none"
+      className="group flex items-center gap-2 bg-white/8 border border-white/15 rounded px-3 py-2 cursor-grab hover:border-gold/60 hover:bg-white/12 transition-all select-none min-w-[120px]"
       title={exp.description}
     >
-      <span className="text-base leading-none">{exp.icon}</span>
-      <div className="min-w-0">
-        <div className="font-pixel text-[9px] text-[var(--text)] leading-tight truncate max-w-[70px]">
-          {exp.name}
-        </div>
+      <span className="text-lg flex-shrink-0 leading-none">{exp.icon}</span>
+      <div>
+        <div className="font-pixel text-[9px] text-[var(--text)] leading-tight">{exp.name}</div>
         <div className="font-pixel text-[9px] text-gold leading-tight">
           ₹{exp.amount.toLocaleString('en-IN')}
         </div>
