@@ -524,29 +524,40 @@ export default function BudgetingCityView() {
 
       {/* Modal: Budget Tetris */}
       {modal === 'tetris' && (
-        <BudgetTetris
-          onClose={() => setModal(null)}
-          onGameOver={(finalScore, clearedLines) => {
-            const xpEarned = Math.min(150, Math.floor(finalScore / 100));
-            if (xpEarned > 0 || clearedLines > 0) {
-              setState((s) => ({
-                ...s,
-                xp: s.xp + xpEarned,
-                gold: s.gold + xpEarned * 2,
-                questsDone: s.questsDone + 1,
-                budgetProgress: Math.min(100, s.budgetProgress + 20),
-              }));
-              addTutorToSidebar(
-                `Budget Tetris: cleared ${clearedLines} line(s), saved virtual ₹${finalScore.toLocaleString('en-IN')}.`
-              );
-              if (clearedLines >= 3) {
-                markQuestStep('q-tetris', 0);
-                markQuestStep('q-tetris', 1);
-              }
-              showToast(`Game Over! Score: ₹${finalScore} · +${xpEarned} XP`);
-            }
-          }}
-        />
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[200] p-4">
+          <div className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] rounded max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-[var(--panel-border)]">
+              <span className="font-pixel text-gold">🎮 Budget Tetris - Monthly Income: ₹{(state?.financialProfile?.monthlyIncome ?? 15000).toLocaleString('en-IN')}</span>
+              <button onClick={() => setModal(null)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
+            </div>
+            <div className="flex-1 p-4">
+              <BudgetTetris
+                monthlyIncome={state?.financialProfile?.monthlyIncome ?? 15000}
+                onClose={() => setModal(null)}
+                onGameOver={(finalScore, clearedLines) => {
+                  const xpEarned = Math.min(150, Math.floor(finalScore / 100));
+                  if (xpEarned > 0 || clearedLines > 0) {
+                    setState((s) => ({
+                      ...s,
+                      xp: s.xp + xpEarned,
+                      gold: s.gold + xpEarned * 2,
+                      questsDone: s.questsDone + 1,
+                      budgetProgress: Math.min(100, s.budgetProgress + 20),
+                    }));
+                    addTutorToSidebar(
+                      `Budget Tetris: cleared ${clearedLines} line(s), saved virtual ₹${finalScore.toLocaleString('en-IN')}.`
+                    );
+                    if (clearedLines >= 3) {
+                      markQuestStep('q-tetris', 0);
+                      markQuestStep('q-tetris', 1);
+                    }
+                    showToast(`Game Over! Score: ₹${finalScore} · +${xpEarned} XP`);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {modal === 'market' && (
