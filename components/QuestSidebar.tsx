@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type QuestStep = {
   label: string;
@@ -69,6 +69,7 @@ type QuestSidebarProps = {
 
 export function QuestSidebar({ entries, tutorTips, questsDone, onAskTutor }: QuestSidebarProps) {
   const tutorRef = useRef<HTMLDivElement | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (tutorRef.current) {
@@ -78,16 +79,24 @@ export function QuestSidebar({ entries, tutorTips, questsDone, onAskTutor }: Que
 
   const quests = entries.filter((e) => e.kind === 'quest') as Extract<SidebarEntry, { kind: 'quest' }>[];
 
-  return (
-    <aside className="hidden md:flex w-60 flex-col bg-[rgba(5,12,8,0.95)] border-r border-green-900/50 text-xs">
+  const innerContent = (
+    <>
       {/* Header */}
       <div className="px-3 py-2.5 border-b border-green-900/60 flex items-center justify-between flex-shrink-0">
         <span className="font-pixel text-[10px] tracking-[0.12em] text-[var(--green-light)]">📜 QUESTS</span>
-        <span className="font-pixel text-[9px] text-[var(--text-muted)] bg-black/30 px-1.5 py-0.5 rounded">{questsDone} done</span>
+        <div className="flex items-center gap-2">
+          <span className="font-pixel text-[9px] text-[var(--text-muted)] bg-black/30 px-1.5 py-0.5 rounded">{questsDone} done</span>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="md:hidden text-[var(--text-muted)] hover:text-red-400 text-lg leading-none"
+            aria-label="Close quests"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
-
         {/* Active Quests */}
         <section>
           <div className="font-pixel text-[9px] text-yellow-400/80 mb-2 tracking-widest">ACTIVE QUESTS</div>
@@ -112,14 +121,12 @@ export function QuestSidebar({ entries, tutorTips, questsDone, onAskTutor }: Que
                     </span>
                     <span className="font-pixel text-[8px] text-[var(--text-muted)]">{done}/{total}</span>
                   </div>
-                  {/* Progress bar */}
                   <div className="h-1 bg-black/40 rounded overflow-hidden mb-2">
                     <div
                       className={`h-full rounded transition-all duration-500 ${completed ? 'bg-green-400' : 'bg-yellow-400'}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  {/* Steps */}
                   <ul className="space-y-0.5">
                     {q.steps.map((s) => (
                       <li key={s.label} className="flex items-start gap-1.5">
@@ -181,8 +188,38 @@ export function QuestSidebar({ entries, tutorTips, questsDone, onAskTutor }: Que
             ))}
           </div>
         </section>
-
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-60 h-full flex-col bg-[rgba(5,12,8,0.95)] border-r border-green-900/50 text-xs">
+        {innerContent}
+      </aside>
+
+      {/* Mobile toggle button */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="md:hidden fixed bottom-20 left-3 z-[250] w-10 h-10 bg-[rgba(5,12,8,0.95)] border border-green-900/60 rounded-full flex items-center justify-center text-sm shadow-lg"
+        aria-label="Open quests"
+      >
+        📜
+      </button>
+
+      {/* Mobile drawer overlay */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-[300] flex">
+          <aside className="flex flex-col w-72 max-w-[85vw] bg-[rgba(5,12,8,0.98)] border-r border-green-900/50 text-xs h-full shadow-2xl">
+            {innerContent}
+          </aside>
+          <div
+            className="flex-1 bg-black/60"
+            onClick={() => setMobileOpen(false)}
+          />
+        </div>
+      )}
+    </>
   );
 }

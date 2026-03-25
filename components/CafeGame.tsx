@@ -49,11 +49,7 @@ export function CafeGame({
 
     if (current.temptation === 'high') {
       setShowTip(current.tip ?? 'High temptation choice. Pause and ask: is this a need or a want?');
-      // auto-advance after short delay so tip is readable
-      setTimeout(() => {
-        setShowTip(null);
-        next();
-      }, 1400);
+      // Player must press Continue to advance — gives time to reflect
       return;
     }
     next();
@@ -120,13 +116,15 @@ export function CafeGame({
               <div className="mt-4 flex gap-3 justify-end">
                 <button
                   onClick={() => choose('save')}
-                  className="font-pixel text-xs bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500 transition"
+                  disabled={!!showTip}
+                  className="font-pixel text-xs bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   SAVE
                 </button>
                 <button
                   onClick={() => choose('spend')}
-                  className="font-pixel text-xs bg-red-500/20 text-red-200 border border-red-500/40 px-4 py-2 rounded hover:bg-red-500/30 transition"
+                  disabled={!!showTip}
+                  className="font-pixel text-xs bg-red-500/20 text-red-200 border border-red-500/40 px-4 py-2 rounded hover:bg-red-500/30 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   SPEND
                 </button>
@@ -136,7 +134,15 @@ export function CafeGame({
             {showTip && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
                 <div className="font-pixel text-[10px] text-yellow-300 mb-2">TIP</div>
-                <div className="text-sm text-[var(--text)] leading-relaxed">{showTip}</div>
+                <div className="text-sm text-[var(--text)] leading-relaxed mb-3">{showTip}</div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => { setShowTip(null); next(); }}
+                    className="font-pixel text-xs bg-yellow-500/20 text-yellow-200 border border-yellow-500/40 px-4 py-1.5 rounded hover:bg-yellow-500/30 transition"
+                  >
+                    Continue →
+                  </button>
+                </div>
               </div>
             )}
 

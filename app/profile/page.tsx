@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { INCOME_OPTIONS, LIVING_OPTIONS, GOAL_OPTIONS, RISK_OPTIONS, STORAGE_KEY as GAME_STORAGE_KEY } from '@/lib/gameState';
 
 const STORAGE_KEY = 'finquest_state';
 
@@ -124,6 +125,11 @@ function loadState(): GameProfileState {
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<GameProfileState>(() => loadState());
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editIncome, setEditIncome] = useState('');
+  const [editLiving, setEditLiving] = useState('');
+  const [editGoal, setEditGoal] = useState('');
+  const [editRisk, setEditRisk] = useState('');
 
   useEffect(() => {
     setProfile(loadState());
@@ -131,31 +137,33 @@ export default function ProfilePage() {
 
   const derived = useMemo(() => getXpProgress(profile.totalXp), [profile.totalXp]);
   const effectiveLevel = derived.level;
-  const pctRounded = Math.max(0, Math.min(100, Math.round(derived.pct / 5) * 5));
-  const widthClassMap: Record<number, string> = {
-    0: 'w-0',
-    5: 'w-[5%]',
-    10: 'w-[10%]',
-    15: 'w-[15%]',
-    20: 'w-[20%]',
-    25: 'w-[25%]',
-    30: 'w-[30%]',
-    35: 'w-[35%]',
-    40: 'w-[40%]',
-    45: 'w-[45%]',
-    50: 'w-[50%]',
-    55: 'w-[55%]',
-    60: 'w-[60%]',
-    65: 'w-[65%]',
-    70: 'w-[70%]',
-    75: 'w-[75%]',
-    80: 'w-[80%]',
-    85: 'w-[85%]',
-    90: 'w-[90%]',
-    95: 'w-[95%]',
-    100: 'w-full',
+
+  const startEditing = () => {
+    setEditIncome(profile.financialProfile.incomeLabel);
+    setEditLiving(profile.financialProfile.livingSituation);
+    setEditGoal(profile.financialProfile.primaryGoal);
+    setEditRisk(profile.financialProfile.riskTolerance);
+    setEditingProfile(true);
   };
-  const widthClass = widthClassMap[pctRounded] ?? 'w-0';
+
+  const saveProfile = () => {
+    const incomeOpt = INCOME_OPTIONS.find(o => o.label === editIncome) ?? INCOME_OPTIONS[2];
+    const updated: GameProfileState = {
+      ...profile,
+      financialProfile: {
+        monthlyIncome: incomeOpt.monthlyIncome,
+        incomeLabel: editIncome,
+        livingSituation: editLiving,
+        primaryGoal: editGoal,
+        riskTolerance: editRisk,
+      },
+    };
+    try {
+      localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(updated));
+    } catch { /* storage unavailable */ }
+    setProfile(updated);
+    setEditingProfile(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0e1a] to-[#0a1a0a] px-4 py-10">
@@ -181,7 +189,7 @@ export default function ProfilePage() {
                   </span>
                 </div>
                 <div className="mt-2 h-2 bg-black/40 border border-white/10 rounded overflow-hidden">
-                  <div className={`h-full bg-gold/80 ${widthClass}`} />
+                  <div className="h-full bg-gold/80" style={{ width: `${derived.pct}%` }} />
                 </div>
                 <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">
                   Total XP: {profile.totalXp.toLocaleString('en-IN')}
@@ -189,20 +197,74 @@ export default function ProfilePage() {
               </div>
 
               <div className="mt-5">
-                <div className="font-pixel text-[#FFD700] text-[10px] uppercase">Your Financial Profile</div>
-                <div className="mt-3 space-y-2 text-[11px]">
-                  <div className="font-pixel text-[9px] text-[var(--text-muted)]">Monthly Income</div>
-                  <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.monthlyIncome.toLocaleString('en-IN')}</div>
-
-                  <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">Living Situation</div>
-                  <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.livingSituation}</div>
-
-                  <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">Primary Goal</div>
-                  <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.primaryGoal}</div>
-
-                  <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">Risk Tolerance</div>
-                  <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.riskTolerance}</div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-pixel text-[#FFD700] text-[10px] uppercase">Your Financial Profile</div>
+                  {!editingProfile && (
+                    <button
+                      onClick={startEditing}
+                      className="font-pixel text-[9px] bg-white/10 border border-white/20 text-[var(--text-muted)] px-2 py-1 rounded hover:border-gold/50 hover:text-gold transition"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </div>
+
+                {editingProfile ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="font-pixel text-[9px] text-[var(--text-muted)] block mb-1">Monthly Income</label>
+                      <select value={editIncome} onChange={e => setEditIncome(e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-2 py-1.5 rounded text-xs outline-none focus:border-gold">
+                        {INCOME_OPTIONS.map(o => <option key={o.label} value={o.label}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-pixel text-[9px] text-[var(--text-muted)] block mb-1">Living Situation</label>
+                      <select value={editLiving} onChange={e => setEditLiving(e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-2 py-1.5 rounded text-xs outline-none focus:border-gold">
+                        {LIVING_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-pixel text-[9px] text-[var(--text-muted)] block mb-1">Primary Goal</label>
+                      <select value={editGoal} onChange={e => setEditGoal(e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-2 py-1.5 rounded text-xs outline-none focus:border-gold">
+                        {GOAL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-pixel text-[9px] text-[var(--text-muted)] block mb-1">Risk Tolerance</label>
+                      <select value={editRisk} onChange={e => setEditRisk(e.target.value)}
+                        className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-2 py-1.5 rounded text-xs outline-none focus:border-gold">
+                        {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button onClick={saveProfile}
+                        className="flex-1 font-pixel text-xs bg-gold text-[var(--dark)] py-1.5 rounded hover:-translate-y-0.5 transition">
+                        Save
+                      </button>
+                      <button onClick={() => setEditingProfile(false)}
+                        className="flex-1 font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] py-1.5 rounded hover:border-red-400/50 hover:text-red-300 transition">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-[11px]">
+                    <div className="font-pixel text-[9px] text-[var(--text-muted)]">Monthly Income</div>
+                    <div className="font-pixel text-sm text-[var(--text)]">₹{profile.financialProfile.monthlyIncome.toLocaleString('en-IN')}</div>
+
+                    <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">Living Situation</div>
+                    <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.livingSituation}</div>
+
+                    <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">Primary Goal</div>
+                    <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.primaryGoal}</div>
+
+                    <div className="font-pixel text-[9px] text-[var(--text-muted)] mt-2">Risk Tolerance</div>
+                    <div className="font-pixel text-sm text-[var(--text)]">{profile.financialProfile.riskTolerance}</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

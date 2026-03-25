@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
@@ -10,15 +10,14 @@ import {
   makeTutorEntry,
   type SidebarEntry,
 } from '@/components/QuestSidebar';
-
-type FinancialProfile = {
-  monthlyIncome: number;
-  incomeLabel: string;
-  livingSituation: string;
-  primaryGoal: string;
-  riskTolerance: string;
-};
-
+import {
+  loadState,
+  saveState,
+  getXpProgress,
+  checkBadges,
+  type GameState,
+} from '@/lib/gameState';
+import { useSupabase } from '@/components/SupabaseProvider';
 
 const BudgetTetris = dynamic(
   () => import('@/components/BudgetTetris').then((m) => m.BudgetTetris),
@@ -28,82 +27,10 @@ const BudgetGame = dynamic(() => import('@/components/BudgetGame').then((m) => m
 const CafeGame = dynamic(() => import('@/components/CafeGame').then((m) => m.CafeGame), { ssr: false });
 const QuizGame = dynamic(() => import('@/components/QuizGame').then((m) => m.QuizGame), { ssr: false });
 
-const AVATARS = [
-  { emoji: '📚', name: 'Scholarship Grinder', gold: 500, stat: 'HIGH' },
-  { emoji: '🎒', name: 'Loan Leveraged', gold: 2000, stat: '₹12L' },
-  { emoji: '💼', name: 'Hustle Economy', gold: 800, stat: 'HIGH' },
-  { emoji: '💎', name: 'Privilege Stack', gold: 15000, stat: 'LOW' },
-  { emoji: '🌍', name: 'International Wildcard', gold: 3000, stat: 'MAX' },
-];
-
-const STORAGE_KEY = 'finquest_state';
-
-function loadState(): {
-  avatar: { emoji: string; name: string; type: string };
-  username: string;
-  financialProfile?: FinancialProfile;
-  gold: number;
-  gems: number;
-  level: number;
-  xp: number;
-  hp: number;
-  questsDone: number;
-  budgetProgress: number;
-} {
-  if (typeof window === 'undefined')
-    return {
-      avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
-      username: 'ADVENTURER',
-      financialProfile: {          // ADD THIS
-        monthlyIncome: 15000,
-        incomeLabel: '₹10,000-15,000',
-        livingSituation: 'PG/Hostel',
-        primaryGoal: 'General Literacy',
-        riskTolerance: 'Moderate',
-      },
-      gold: 15000,
-      gems: 50,
-      level: 1,
-      xp: 25,
-      hp: 80,
-      questsDone: 0,
-      budgetProgress: 0,
-    };
-  try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    if (s) return JSON.parse(s);
-  } catch { }
-  return {
-    avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
-    username: 'ADVENTURER',
-    gold: 15000,
-    gems: 50,
-    level: 1,
-    xp: 25,
-    hp: 80,
-    questsDone: 0,
-    budgetProgress: 0,
-  };
-}
-
-function saveState(state: ReturnType<typeof loadState>) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch { }
-}
-
 export default function BudgetingCityView() {
   const router = useRouter();
-  const [screen, setScreen] = useState<'game'>('game');
-  const [state, setState] = useState<ReturnType<typeof loadState>>(loadState);
-  const [welcomeUsername, setWelcomeUsername] = useState(() => {
-    try {
-      const s = loadState();
-      return s.username || '';
-    } catch {
-      return '';
-    }
-  });
+  const supabase = useSupabase();
+  const [state, setState] = useState<GameState>(loadState);
   const [sidebarEntries, setSidebarEntries] = useState<SidebarEntry[]>([
     ...QUEST_DEFINITIONS,
     ...INITIAL_TIPS,
@@ -120,15 +47,14 @@ export default function BudgetingCityView() {
   } | null>(null);
   const [dormOutcome, setDormOutcome] = useState<{ title: string; text: string; xp: number; gold: number } | null>(null);
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
+  const [fetchingDorm, setFetchingDorm] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<Array<{ role: string; content: string }>>([
-    { role: 'ai', content: "Namaste! I'm your Socratic financial guide. What financial situation are you navigating today?" },
+    { role: 'ai', content: "Namaste! I'm your Socratic financial guide, Penny. What financial situation are you navigating today?" },
   ]);
   const [tutorInput, setTutorInput] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorTips, setTutorTips] = useState<string[]>([]);
-  const hotbarActive = useRef(0);
-
   const persist = useCallback(() => {
     saveState(state);
   }, [state]);
@@ -162,78 +88,51 @@ export default function BudgetingCityView() {
     );
   }, []);
 
-  const updateGold = useCallback((delta: number) => {
-    setState((s) => ({ ...s, gold: Math.max(0, s.gold + delta) }));
-  }, []);
-
-  const selectAvatar = (idx: number) => {
-    const a = AVATARS[idx];
-    setState((s) => ({
-      ...s,
-      avatar: { emoji: a.emoji, name: a.name.split(' ')[0].toUpperCase(), type: a.name },
-      gold: a.gold,
-    }));
-  };
-
-  const startGame = () => {
-    setScreen('game');
-  };
-
-  const beginQuest = () => {
-    const cleaned = welcomeUsername.trim();
-    const username = cleaned ? cleaned.toUpperCase().slice(0, 14) : 'ADVENTURER';
-    setState((s) => ({ ...s, username }));
-  };
-
   const handleLogout = async () => {
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
-    await supabase.auth.signOut();
-    window.location.href = '/login';
+    if (supabase) await supabase.auth.signOut();
+    router.push('/login');
+  };
+
+  const fallbackScenario = {
+    situation: "Your roommate says they'll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?",
+    choices: [
+      'Equal split ₹5k each. Decline Spotify.',
+      'Equal split after NoBroker discount — ~₹4,500 each',
+    ],
+    costs: [5000, 4500],
+    outcomes: [{ xp: 60, gold: 150 }, { xp: 100, gold: 300 }],
   };
 
   const fetchDormScenario = async () => {
+    if (fetchingDorm) return; // in-flight guard
+    setFetchingDorm(true);
     try {
       const res = await fetch('/api/generate-scenario', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           module: 'budgeting_1',
-          playerState: { gold: state.gold, level: state.level, avatar: state.avatar.type },
+          playerState: {
+            gold: state.gold,
+            level: state.level,
+            avatar: state.avatar.type,
+            financialProfile: state.financialProfile,
+          },
         }),
       });
       const data = await res.json();
-      if (data.situation) setDormScenario(data);
-      else setDormScenario({
-        situation:
-          'Your roommate says they\'ll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?',
-        choices: [
-          'Agree to split ₹6k/₹4k + Spotify — you pay ₹4,075/month',
-          'Equal split ₹5k each. Decline Spotify.',
-          'Equal split after NoBroker discount — ~₹4,500 each',
-        ],
-        costs: [4075, 5000, 4500],
-        outcomes: [{}, { xp: 60, gold: 150 }, { xp: 100, gold: 300 }],
-      });
+      setDormScenario(data.situation ? data : fallbackScenario);
     } catch {
-      setDormScenario({
-        situation: 'Your roommate says they\'ll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?',
-        choices: [
-          'Agree to split ₹6k/₹4k + Spotify — you pay ₹4,075/month',
-          'Equal split ₹5k each. Decline Spotify.',
-          'Equal split after NoBroker discount — ~₹4,500 each',
-        ],
-        costs: [4075, 5000, 4500],
-        outcomes: [{}, { xp: 60, gold: 150 }, { xp: 100, gold: 300 }],
-      });
+      setDormScenario(fallbackScenario);
+    } finally {
+      setFetchingDorm(false);
     }
   };
 
   const openDorms = () => {
     setDormOutcome(null);
+    setSelectedChoice(null);
+    setDormScenario(null);
     fetchDormScenario();
     setModal('dorms');
   };
@@ -252,18 +151,26 @@ export default function BudgetingCityView() {
   };
 
   const dormChoice = (i: number) => {
-    if (!dormScenario) return;
+    if (!dormScenario || selectedChoice !== null) return;
+    setSelectedChoice(i);
     const cost = dormScenario.costs[i] ?? 0;
     const out = dormScenario.outcomes[i] ?? {};
     const xp = out.xp ?? 0;
     const gold = (out.gold ?? 0) - cost;
-    setState((s) => ({
-      ...s,
-      gold: Math.max(0, s.gold + gold),
-      xp: s.xp + xp,
-      questsDone: s.questsDone + 1,
-      budgetProgress: Math.min(100, s.budgetProgress + 33),
-    }));
+    setState((s) => {
+      const newTotalXp = (s.totalXp ?? s.xp) + xp;
+      const updated: GameState = {
+        ...s,
+        gold: Math.max(0, s.gold + gold),
+        xp: s.xp + xp,
+        totalXp: newTotalXp,
+        questsDone: s.questsDone + 1,
+        dilemmasCompleted: (s.dilemmasCompleted ?? 0) + 1,
+        budgetProgress: Math.min(100, s.budgetProgress + 33),
+      };
+      updated.earnedBadges = checkBadges(updated);
+      return updated;
+    });
     setDormOutcome({
       title: `Option ${String.fromCharCode(65 + i)}`,
       text: out.lesson ?? 'You made a choice. Consider asking the AI Tutor why this matters for your budget!',
@@ -307,6 +214,12 @@ export default function BudgetingCityView() {
       addTutorToSidebar(reply);
       const tip = extractTip(reply);
       if (tip) setTutorTips((prev) => [...prev.slice(-9), tip]);
+      // Track tutor questions for badge progress
+      setState((s) => {
+        const updated: GameState = { ...s, tutorQuestions: (s.tutorQuestions ?? 0) + 1 };
+        updated.earnedBadges = checkBadges(updated);
+        return updated;
+      });
       markQuestStep('q-budget-basics', 2);
       markQuestStep('q-roommate', 2);
     } catch {
@@ -356,44 +269,37 @@ export default function BudgetingCityView() {
               ← BACK
             </button>
             {/* Hotspots */}
+            {/* MARKET — top-left building */}
             <div
               className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
-              style={{ left: '48%', top: '20%', width: '15%', height: '20%' }}
-              onClick={() => openDorms()}
-            >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">DORMS</span>
-            </div>
-            {/* MARKET */}
-            <div
-              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
-              style={{ left: '8%', top: '30%', width: '22%', height: '22%' }}
+              style={{ left: '2%', top: '27%', width: '24%', height: '42%' }}
               onClick={() => setModal('market')}
             >
               <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">MARKET</span>
             </div>
-            {/* CAFE */}
+            {/* DORMS — center apartment complex */}
             <div
               className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
-              style={{ left: '55%', top: '42%', width: '18%', height: '22%' }}
+              style={{ left: '26%', top: '38%', width: '42%', height: '48%' }}
+              onClick={() => openDorms()}
+            >
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">DORMS</span>
+            </div>
+            {/* UNIV. CAFE — bottom-right */}
+            <div
+              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
+              style={{ left: '72%', top: '56%', width: '26%', height: '38%' }}
               onClick={() => openCafe()}
             >
               <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">UNIV. CAFÉ</span>
             </div>
-            {/* ASSESSMENT (CITY HALL) */}
+            {/* CITY HALL / ASSESSMENT — top-right */}
             <div
               className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
-              style={{ left: '55%', top: '5%', width: '18%', height: '18%' }}
+              style={{ left: '70%', top: '1%', width: '28%', height: '35%' }}
               onClick={() => openQuiz()}
             >
               <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">ASSESSMENT</span>
-            </div>
-            {/* BUDGET TETRIS */}
-            <div
-              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
-              style={{ left: '25%', top: '55%', width: '15%', height: '18%' }}
-              onClick={() => setModal('tetris')}
-            >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">ARCADE</span>
             </div>
           </div>
 
@@ -417,13 +323,13 @@ export default function BudgetingCityView() {
                     })}
                   </div>
                   <div className="flex gap-1">
-                    {Array.from({ length: 10 }).map((_, i) => {
-                      const filled = ((state.xp % 100) / 10) > i;
-                      return (
+                    {(() => {
+                      const { pct } = getXpProgress(state.totalXp ?? state.xp);
+                      return Array.from({ length: 10 }).map((_, i) => (
                         // eslint-disable-next-line react/no-array-index-key
-                        <span key={i}>{filled ? '💎' : '◇'}</span>
-                      );
-                    })}
+                        <span key={i}>{(pct / 10) > i ? '💎' : '◇'}</span>
+                      ));
+                    })()}
                   </div>
                 </div>
               </div>
@@ -460,7 +366,7 @@ export default function BudgetingCityView() {
                 className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 pointer-events-auto hover:shadow-none hover:translate-y-[4px] transition-all"
               >
                 <span>🐱</span>
-                <span className="font-pixel text-[9px] text-green-400">ARYAN</span>
+                <span className="font-pixel text-[9px] text-green-400">PENNY</span>
               </button>
             </div>
 
@@ -470,7 +376,7 @@ export default function BudgetingCityView() {
                   { label: 'MAP', icon: '🗺️', onClick: () => showToast('🗺️ Map — coming soon!') },
                   { label: 'INVENTORY', icon: '🎒', onClick: () => showToast('🎒 Inventory — coming soon!') },
                   { label: 'QUESTS', icon: '📜', onClick: () => setModal('budgeting-city') },
-                  { label: 'MENU', icon: '☰', onClick: () => (window.location.href = '/') },
+                  { label: 'MENU', icon: '☰', onClick: () => router.push('/') },
                 ].map((btn) => (
                   <button
                     key={btn.label}
@@ -499,6 +405,13 @@ export default function BudgetingCityView() {
             <button onClick={() => setModal(null)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
           </div>
           <div className="p-6">
+            {fetchingDorm ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <div className="w-8 h-8 border-2 border-gold/40 border-t-gold rounded-full animate-spin" />
+                <div className="font-pixel text-[10px] text-[var(--text-muted)]">Generating scenario...</div>
+              </div>
+            ) : (
+            <>
             <div className="mb-4">
               <div className="font-pixel text-gold text-xs mb-2">{dormScenario?.character ?? 'Roommate Rahul'}:</div>
               <p className="text-[var(--text)] text-sm leading-relaxed">
@@ -566,6 +479,7 @@ export default function BudgetingCityView() {
                     onClick={() => {
                       setDormOutcome(null);
                       setSelectedChoice(null);
+                      setDormScenario(null);
                       fetchDormScenario();
                     }}
                     className="font-pixel text-xs bg-blue-500/20 text-blue-200 border border-blue-500/40 px-3 py-1.5 rounded"
@@ -581,6 +495,8 @@ export default function BudgetingCityView() {
                 ← Back to City
               </button>
             </div>
+            </>
+            )}
           </div>
         </div>
       </div>
@@ -603,13 +519,20 @@ export default function BudgetingCityView() {
                 onGameOver={(finalScore, clearedLines) => {
                   const xpEarned = Math.min(150, Math.floor(finalScore / 100));
                   if (xpEarned > 0 || clearedLines > 0) {
-                    setState((s) => ({
-                      ...s,
-                      xp: s.xp + xpEarned,
-                      gold: s.gold + xpEarned * 2,
-                      questsDone: s.questsDone + 1,
-                      budgetProgress: Math.min(100, s.budgetProgress + 20),
-                    }));
+                    setState((s) => {
+                      const newTotalXp = (s.totalXp ?? s.xp) + xpEarned;
+                      const updated: GameState = {
+                        ...s,
+                        xp: s.xp + xpEarned,
+                        totalXp: newTotalXp,
+                        gold: s.gold + xpEarned * 2,
+                        tetrisCorrect: (s.tetrisCorrect ?? 0) + clearedLines,
+                        questsDone: s.questsDone + 1,
+                        budgetProgress: Math.min(100, s.budgetProgress + 20),
+                      };
+                      updated.earnedBadges = checkBadges(updated);
+                      return updated;
+                    });
                     addTutorToSidebar(
                       `Budget Tetris: cleared ${clearedLines} line(s), saved virtual ₹${finalScore.toLocaleString('en-IN')}.`
                     );
@@ -628,15 +551,23 @@ export default function BudgetingCityView() {
 
       {modal === 'market' && (
         <BudgetGame
+          monthlyIncome={state.financialProfile?.monthlyIncome}
           onClose={() => setModal(null)}
           onComplete={(correct, xp, gold) => {
-            setState(s => ({
-              ...s,
-              xp: s.xp + xp,
-              gold: s.gold + gold,
-              questsDone: s.questsDone + 1,
-              budgetProgress: Math.min(100, s.budgetProgress + 33),
-            }));
+            setState(s => {
+              const newTotalXp = (s.totalXp ?? s.xp) + xp;
+              const updated: GameState = {
+                ...s,
+                xp: s.xp + xp,
+                totalXp: newTotalXp,
+                gold: s.gold + gold,
+                perfectBudgetGame: correct === 12 ? true : s.perfectBudgetGame,
+                questsDone: s.questsDone + 1,
+                budgetProgress: Math.min(100, s.budgetProgress + 33),
+              };
+              updated.earnedBadges = checkBadges(updated);
+              return updated;
+            });
             markQuestStep('q-budget-basics', 1);
             showToast(`+${xp} XP · +₹${gold} Gold 🎉`);
           }}
@@ -647,13 +578,20 @@ export default function BudgetingCityView() {
         <CafeGame
           onClose={() => setActiveGame(null)}
           onComplete={(xpEarned) => {
-            setState((s) => ({
-              ...s,
-              xp: s.xp + xpEarned,
-              gold: s.gold + Math.floor(xpEarned * 2),
-              questsDone: s.questsDone + 1,
-              budgetProgress: Math.min(100, s.budgetProgress + 20),
-            }));
+            setState((s) => {
+              const newTotalXp = (s.totalXp ?? s.xp) + xpEarned;
+              const updated: GameState = {
+                ...s,
+                xp: s.xp + xpEarned,
+                totalXp: newTotalXp,
+                gold: s.gold + Math.floor(xpEarned * 2),
+                cafeResists: (s.cafeResists ?? 0) + Math.floor(xpEarned / 10),
+                questsDone: s.questsDone + 1,
+                budgetProgress: Math.min(100, s.budgetProgress + 20),
+              };
+              updated.earnedBadges = checkBadges(updated);
+              return updated;
+            });
             showToast(`+${xpEarned} XP earned! ☕`);
           }}
         />
@@ -663,13 +601,20 @@ export default function BudgetingCityView() {
         <QuizGame
           onClose={() => setActiveGame(null)}
           onComplete={(result) => {
-            setState((s) => ({
-              ...s,
-              xp: s.xp + result.xpEarned,
-              gold: s.gold + result.goldEarned,
-              questsDone: s.questsDone + 1,
-              budgetProgress: Math.min(100, s.budgetProgress + 10),
-            }));
+            setState((s) => {
+              const newTotalXp = (s.totalXp ?? s.xp) + result.xpEarned;
+              const updated: GameState = {
+                ...s,
+                xp: s.xp + result.xpEarned,
+                totalXp: newTotalXp,
+                gold: s.gold + result.goldEarned,
+                quizCorrect: (s.quizCorrect ?? 0) + result.correct,
+                questsDone: s.questsDone + 1,
+                budgetProgress: Math.min(100, s.budgetProgress + 10),
+              };
+              updated.earnedBadges = checkBadges(updated);
+              return updated;
+            });
             showToast(`🏛️ Quiz complete! +${result.xpEarned} XP`);
           }}
         />
@@ -682,7 +627,7 @@ export default function BudgetingCityView() {
               <div className="w-8 h-8 bg-[#0a1a2e] border border-gold/40 rounded-full overflow-hidden flex items-center justify-center">
                 <img
                   src="/cat.png"
-                  alt="Aryan"
+                  alt="Penny"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
@@ -692,7 +637,7 @@ export default function BudgetingCityView() {
                 <span className="text-lg hidden">🐱</span>
               </div>
               <div>
-                <div className="font-pixel text-[var(--blue-light)] text-xs">Aryan</div>
+                <div className="font-pixel text-[var(--blue-light)] text-xs">Penny</div>
                 <div className="text-xs text-[var(--text-muted)]">Finance Cat · RAG + Groq</div>
               </div>
             </div>

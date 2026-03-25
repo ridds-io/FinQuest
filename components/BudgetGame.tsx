@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 interface BudgetGameProps {
   onClose: () => void;
   onComplete: (score: number, xp: number, gold: number) => void;
+  monthlyIncome?: number;
 }
 
 type Category = 'needs' | 'wants' | 'savings' | 'pool';
@@ -16,48 +17,56 @@ interface Expense {
   amount: number;
   correct: Category;
   description: string;
+  reason: string;
 }
 
 const HARDCODED_EXPENSES: Expense[] = [
-  { id: 'rent',      icon: '🏠', name: 'PG Rent',       amount: 5000, correct: 'needs',   description: 'Monthly Pune PG' },
-  { id: 'groceries', icon: '🛒', name: 'Groceries',     amount: 2000, correct: 'needs',   description: 'Weekly food' },
-  { id: 'mobile',    icon: '📱', name: 'Mobile Bill',   amount: 299,  correct: 'needs',   description: 'Jio recharge' },
-  { id: 'bus',       icon: '🚌', name: 'Bus/Auto',      amount: 800,  correct: 'needs',   description: 'Commute' },
-  { id: 'textbooks', icon: '📚', name: 'Textbooks',    amount: 600,  correct: 'needs',   description: 'Sem books' },
-  { id: 'chai',      icon: '☕', name: 'Daily Chai',    amount: 600,  correct: 'wants',   description: '₹20 × 30' },
-  { id: 'ott',       icon: '🎬', name: 'OTT Apps',      amount: 499,  correct: 'wants',   description: 'Streaming' },
-  { id: 'dining',    icon: '🍕', name: 'Eating Out',    amount: 800,  correct: 'wants',   description: 'Weekends' },
-  { id: 'gaming',    icon: '🎮', name: 'Game Credits',  amount: 300,  correct: 'wants',   description: 'In-app' },
-  { id: 'gym',       icon: '💪', name: 'Gym Fee',       amount: 500,  correct: 'wants',   description: 'Fitness' },
-  { id: 'sip',       icon: '📈', name: 'SIP Fund',      amount: 2000, correct: 'savings', description: 'Investment' },
-  { id: 'emergency', icon: '🚨', name: 'Emergency',     amount: 1000, correct: 'savings', description: 'Safety net' },
+  { id: 'rent',      icon: '🏠', name: 'PG Rent',      amount: 5000, correct: 'needs',   description: 'Monthly Pune PG', reason: 'Shelter is non-negotiable — you can\'t live without it.' },
+  { id: 'groceries', icon: '🛒', name: 'Groceries',    amount: 2000, correct: 'needs',   description: 'Weekly food',     reason: 'Food is essential for survival, not a lifestyle choice.' },
+  { id: 'mobile',    icon: '📱', name: 'Mobile Bill',  amount: 299,  correct: 'needs',   description: 'Jio recharge',    reason: 'Connectivity is required for college, UPI, and work.' },
+  { id: 'bus',       icon: '🚌', name: 'Bus/Auto',     amount: 800,  correct: 'needs',   description: 'Commute',         reason: 'Daily transport to college or work isn\'t optional.' },
+  { id: 'textbooks', icon: '📚', name: 'Textbooks',   amount: 600,  correct: 'needs',   description: 'Sem books',       reason: 'Course material is required, not a lifestyle expense.' },
+  { id: 'chai',      icon: '☕', name: 'Daily Chai',   amount: 600,  correct: 'wants',   description: '₹20 × 30',       reason: 'Enjoyable, but you can skip or brew at home to save.' },
+  { id: 'ott',       icon: '🎬', name: 'OTT Apps',     amount: 499,  correct: 'wants',   description: 'Streaming',       reason: 'Entertainment is a choice — free content exists.' },
+  { id: 'dining',    icon: '🍕', name: 'Eating Out',   amount: 800,  correct: 'wants',   description: 'Weekends',        reason: 'Eating out is optional — cooking at home costs far less.' },
+  { id: 'gaming',    icon: '🎮', name: 'Game Credits', amount: 300,  correct: 'wants',   description: 'In-app',          reason: 'Fun but entirely optional — the first thing to cut when tight.' },
+  { id: 'gym',       icon: '💪', name: 'Gym Fee',      amount: 500,  correct: 'wants',   description: 'Fitness',         reason: 'Exercise matters, but free alternatives (park, home) exist.' },
+  { id: 'sip',       icon: '📈', name: 'SIP Fund',     amount: 2000, correct: 'savings', description: 'Investment',      reason: 'Investing even ₹500/month compounds significantly over years.' },
+  { id: 'emergency', icon: '🚨', name: 'Emergency',    amount: 1000, correct: 'savings', description: 'Safety net',      reason: 'A 3–6 month buffer prevents debt when something goes wrong.' },
 ];
 
-const TOTAL_INCOME = 15000;
-const TARGETS = { needs: 7500, wants: 4500, savings: 3000 };
+const BASE_INCOME = 15000;
 const LABELS = {
   needs:   { label: 'NEEDS',   pct: '50%', color: 'border-red-400/50',   bg: 'bg-red-500/10',   text: 'text-red-400',   bar: 'bg-red-400' },
   wants:   { label: 'WANTS',   pct: '30%', color: 'border-blue-400/50',  bg: 'bg-blue-500/10',  text: 'text-blue-300',  bar: 'bg-blue-400' },
   savings: { label: 'SAVINGS', pct: '20%', color: 'border-green-400/50', bg: 'bg-green-500/10', text: 'text-green-400', bar: 'bg-green-400' },
 };
 
-export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
+export function BudgetGame({ onClose, onComplete, monthlyIncome = BASE_INCOME }: BudgetGameProps) {
+  const TOTAL_INCOME = monthlyIncome;
+  const TARGETS = {
+    needs:   Math.round(TOTAL_INCOME * 0.5),
+    wants:   Math.round(TOTAL_INCOME * 0.3),
+    savings: Math.round(TOTAL_INCOME * 0.2),
+  };
+
   const [expenses, setExpenses] = useState<Expense[]>(HARDCODED_EXPENSES);
   const [loadingExpenses, setLoadingExpenses] = useState(true);
   const [placed, setPlaced] = useState<Record<string, Category>>({});
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<Category | null>(null);
   const [result, setResult] = useState<{
-    correct: number; total: number; xp: number; gold: number; feedback: string[];
+    correct: number; total: number; xp: number; gold: number;
+    feedback: { msg: string; reason: string }[];
   } | null>(null);
   const [showHint, setShowHint] = useState<string | null>(null);
   const dragSrc = useRef<Category | 'pool'>('pool');
 
   useEffect(() => {
-    fetch('/api/generate-expenses')
+    fetch('/api/generate-expenses', { method: 'POST' })
       .then(r => r.json())
       .then((data) => {
-        if (data.expenses && Array.isArray(data.expenses) && data.expenses.length === 12) {
+        if (data.expenses && Array.isArray(data.expenses) && data.expenses.length >= 10) {
           setExpenses(data.expenses);
         }
       })
@@ -100,12 +109,15 @@ export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
   // ── check results ──
   const checkBudget = () => {
     let correct = 0;
-    const feedback: string[] = [];
+    const feedback: { msg: string; reason: string }[] = [];
     expenses.forEach(exp => {
       if (placed[exp.id] === exp.correct) {
         correct++;
       } else if (placed[exp.id] && placed[exp.id] !== 'pool') {
-        feedback.push(`${exp.icon} ${exp.name} → should be ${exp.correct.toUpperCase()}`);
+        feedback.push({
+          msg: `${exp.icon} ${exp.name} → should be ${exp.correct.toUpperCase()}`,
+          reason: exp.reason,
+        });
       }
     });
     const pct = Math.round((correct / expenses.length) * 100);
@@ -291,7 +303,16 @@ export function BudgetGame({ onClose, onComplete }: BudgetGameProps) {
                 ↺ RESET
               </button>
               <button
-                onClick={() => setShowHint(showHint ? null : expenses[0]?.id ?? null)}
+                onClick={() => {
+                  if (!showHint) {
+                    setShowHint(expenses[0]?.id ?? null);
+                  } else {
+                    const ids = expenses.map(e => e.id);
+                    const idx = ids.indexOf(showHint);
+                    const next = ids[(idx + 1) % ids.length];
+                    setShowHint(next === showHint ? null : next);
+                  }
+                }}
                 className="font-pixel text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40 px-5 py-2.5 rounded hover:bg-blue-500/30 transition"
               >
                 ? HINT
@@ -404,7 +425,7 @@ function MobilePlacer({
 function ResultScreen({
   result, onRetry, onContinue
 }: {
-  result: { correct: number; total: number; xp: number; gold: number; feedback: string[] };
+  result: { correct: number; total: number; xp: number; gold: number; feedback: { msg: string; reason: string }[] };
   onRetry: () => void;
   onContinue: () => void;
 }) {
@@ -440,19 +461,22 @@ function ResultScreen({
       {/* What you got wrong */}
       {result.feedback.length > 0 && (
         <div className="bg-black/30 rounded-lg p-4 border border-white/10">
-          <div className="font-pixel text-[10px] text-[var(--text-muted)] mb-2">CORRECTIONS:</div>
-          <div className="space-y-1">
+          <div className="font-pixel text-[10px] text-[var(--text-muted)] mb-3">CORRECTIONS:</div>
+          <div className="space-y-3">
             {result.feedback.map((f, i) => (
-              <div key={i} className="text-sm text-[var(--text)]">{f}</div>
+              <div key={i} className="border-l-2 border-yellow-500/50 pl-3">
+                <div className="text-sm text-yellow-300 font-semibold">{f.msg}</div>
+                <div className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{f.reason}</div>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* 50/30/20 reminder */}
+      {/* 50/30/20 reminder — passed via props so this component stays pure */}
       <div className="bg-green-500/8 border border-green-500/20 rounded-lg p-4 text-sm text-[var(--text-muted)] leading-relaxed">
-        <span className="text-green-400 font-semibold">50/30/20 for ₹15,000/month: </span>
-        ₹7,500 on needs (rent, groceries, transport) · ₹4,500 on wants (chai, OTT, dining) · ₹3,000 to savings (SIP, emergency fund).
+        <span className="text-green-400 font-semibold">50/30/20 rule: </span>
+        50% on needs (rent, groceries, transport) · 30% on wants (chai, OTT, dining) · 20% to savings (SIP, emergency fund).
         These are guidelines — adjust based on your situation.
       </div>
 
