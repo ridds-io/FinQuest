@@ -33,6 +33,13 @@ const STORAGE_KEY = 'finquest_state';
 function loadState(): {
   avatar: { emoji: string; name: string; type: string };
   username: string;
+  financialProfile: {          // ADD THIS
+      monthlyIncome: 15000,
+      incomeLabel: '₹10,000-15,000',
+      livingSituation: 'PG/Hostel',
+      primaryGoal: 'General Literacy',
+      riskTolerance: 'Moderate',
+  },
   gold: number;
   gems: number;
   level: number;
@@ -45,6 +52,13 @@ function loadState(): {
     return {
       avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
       username: 'ADVENTURER',
+      financialProfile: {
+        monthlyIncome: 15000,
+        incomeLabel: '₹10,000-15,000',
+        livingSituation: 'PG/Hostel',
+        primaryGoal: 'General Literacy',
+        riskTolerance: 'Moderate',
+      },
       gold: 15000,
       gems: 50,
       level: 1,
@@ -60,6 +74,13 @@ function loadState(): {
   return {
     avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
     username: 'ADVENTURER',
+    financialProfile: {
+      monthlyIncome: 15000,
+      incomeLabel: '₹10,000-15,000',
+      livingSituation: 'PG/Hostel',
+      primaryGoal: 'General Literacy',
+      riskTolerance: 'Moderate',
+    },
     gold: 15000,
     gems: 50,
     level: 1,
@@ -678,6 +699,7 @@ export default function MainGameView() {
       {/* Modal: Budget Tetris */}
       {modal === 'tetris' && (
         <BudgetTetris
+          monthlyIncome={state?.financialProfile?.monthlyIncome ?? 15000}
           onClose={() => setModal(null)}
           onGameOver={(finalScore, clearedLines) => {
             const xpEarned = Math.min(150, Math.floor(finalScore / 100));
