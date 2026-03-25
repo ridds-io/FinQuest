@@ -78,7 +78,12 @@ function saveState(state: ReturnType<typeof loadState>) {
 
 export default function MainGameView() {
   const router = useRouter();
-  const [screen, setScreen] = useState<'welcome' | 'avatar' | 'game'>('welcome');
+  const [screen, setScreen] = useState<'welcome' | 'avatar' | 'game'>(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('finquest_intro_done') === 'true') {
+      return 'game';
+    }
+    return 'welcome';
+  });
   const [state, setState] = useState(loadState);
   const [welcomeUsername, setWelcomeUsername] = useState(() => {
     try {
@@ -105,7 +110,7 @@ export default function MainGameView() {
   const [dormOutcome, setDormOutcome] = useState<{ title: string; text: string; xp: number; gold: number } | null>(null);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<Array<{ role: string; content: string }>>([
-    { role: 'ai', content: "Namaste! I'm your Socratic financial guide, Penny. What financial situation are you navigating today?" },
+    { role: 'ai', content: "Namaste! I'm your Socratic financial guide, Aryan. What financial situation are you navigating today?" },
   ]);
   const [tutorInput, setTutorInput] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
@@ -152,6 +157,7 @@ export default function MainGameView() {
   };
 
   const startGame = () => {
+    if (typeof window !== 'undefined') sessionStorage.setItem('finquest_intro_done', 'true');
     setScreen('game');
   };
 
@@ -414,35 +420,42 @@ export default function MainGameView() {
         <main className="flex-1 relative min-h-[500px] bg-[#2d5a2d] overflow-hidden">
           <div className="relative w-full h-full">
             <img
-              src="/assets/background.jpg"
+              src="/map/world-map.png"
               alt="FinQuest World Map"
-              className="absolute w-full h-full object-cover select-none z-0"
+              className="w-full h-full object-cover select-none"
               draggable={false}
               style={{ imageRendering: 'pixelated' }}
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-            {/* Clickable hotspots with building images */}
+            {/* Clickable hotspots over text labels */}
+            {/* Budgeting City */}
             <div
-              className="absolute cursor-pointer hover:-translate-y-1 transition-transform duration-300 z-10 flex items-end justify-center mix-blend-multiply"
-              style={{ left: '12%', top: '42%', width: '20%', height: '28%' }}
+              className="absolute cursor-pointer rounded border border-transparent hover:border-yellow-400/40 hover:bg-yellow-400/15 transition-all duration-200 flex items-center justify-center mix-blend-screen"
+              style={{ left: '26.8%', top: '23.5%', width: '13.5%', height: '5.5%' }}
               onClick={openBudgetingCity}
-            >
-              <img src="/assets/budgeting.png" alt="Budgeting City" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            </div>
+              title="Budgeting City"
+            />
+            {/* Investment Tower */}
             <div
-              className="absolute cursor-pointer hover:-translate-y-1 transition-transform duration-300 z-10 opacity-60 mix-blend-multiply"
-              style={{ left: '55%', top: '8%', width: '22%', height: '35%' }}
+              className="absolute cursor-pointer rounded border border-transparent hover:border-yellow-400/20 hover:bg-yellow-400/10 transition-all duration-200 mix-blend-screen"
+              style={{ left: '62.7%', top: '23.5%', width: '15.5%', height: '5.5%' }}
               onClick={() => showToast('🔒 Complete Budgeting City to unlock Investment Tower!')}
-            >
-              <img src="/assets/mainasset.jpg" alt="Investment Tower" className="w-full h-full object-contain mix-blend-darken" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            </div>
+              title="Investment Tower (Locked)"
+            />
+            {/* Central Plaza */}
             <div
-              className="absolute cursor-pointer hover:-translate-y-1 transition-transform duration-300 z-10 mix-blend-multiply"
-              style={{ left: '35%', top: '28%', width: '18%', height: '22%' }}
+              className="absolute cursor-pointer rounded border border-transparent hover:border-yellow-400/40 hover:bg-yellow-400/15 transition-all duration-200 mix-blend-screen"
+              style={{ left: '50.1%', top: '39.8%', width: '14.5%', height: '4.5%' }}
               onClick={openQuiz}
-            >
-               <img src="/assets/budgetasset.png" alt="City Hall" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            </div>
+              title="Central Plaza"
+            />
+            {/* Loan Bank */}
+            <div
+              className="absolute cursor-pointer rounded border border-transparent hover:border-yellow-400/20 hover:bg-yellow-400/10 transition-all duration-200 mix-blend-screen"
+              style={{ left: '69%', top: '64%', width: '13.5%', height: '5%' }}
+              onClick={() => showToast('🔒 Complete Budgeting City to unlock Loan Bank!')}
+              title="Loan Bank (Locked)"
+            />
           </div>
 
           <div className="absolute inset-0 pointer-events-none z-20">
@@ -507,8 +520,8 @@ export default function MainGameView() {
                 onClick={() => setTutorOpen(true)}
                 className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 pointer-events-auto hover:shadow-none hover:translate-y-[4px] transition-all"
               >
-                <span>🤖</span>
-                <span className="font-pixel text-[9px] text-green-400">AI TUTOR</span>
+                <span>🐱</span>
+                <span className="font-pixel text-[9px] text-green-400">ARYAN</span>
               </button>
             </div>
 
@@ -741,10 +754,21 @@ export default function MainGameView() {
         <div className="fixed right-0 top-0 bottom-0 w-full sm:w-96 bg-[rgba(5,15,35,0.97)] border-l-2 border-blue-500/50 z-[300] flex flex-col shadow-2xl">
           <div className="flex justify-between items-center p-4 border-b border-blue-500/30">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">🤖</div>
+              <div className="w-8 h-8 bg-[#0a1a2e] border border-gold/40 rounded-full overflow-hidden flex items-center justify-center">
+                <img
+                  src="/cat.png"
+                  alt="Aryan"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    (e.currentTarget.nextSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
+                  }}
+                />
+                <span className="text-lg hidden">🐱</span>
+              </div>
               <div>
-                <div className="font-pixel text-[var(--blue-light)] text-xs">Penny · AI Tutor</div>
-                <div className="text-xs text-[var(--text-muted)]">Socratic Guide · RAG + Grok</div>
+                <div className="font-pixel text-[var(--blue-light)] text-xs">Aryan</div>
+                <div className="text-xs text-[var(--text-muted)]">Finance Cat · RAG + Groq</div>
               </div>
             </div>
             <button onClick={() => setTutorOpen(false)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
