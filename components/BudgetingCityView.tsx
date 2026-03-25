@@ -12,6 +12,15 @@ import {
   type SidebarEntry,
 } from '@/components/QuestSidebar';
 
+type FinancialProfile = {
+  monthlyIncome: number;
+  incomeLabel: string;
+  livingSituation: string;
+  primaryGoal: string;
+  riskTolerance: string;
+};
+
+
 const BudgetTetris = dynamic(
   () => import('@/components/BudgetTetris').then((m) => m.BudgetTetris),
   { ssr: false },
@@ -33,6 +42,7 @@ const STORAGE_KEY = 'finquest_state';
 function loadState(): {
   avatar: { emoji: string; name: string; type: string };
   username: string;
+  financialProfile?: FinancialProfile;
   gold: number;
   gems: number;
   level: number;
@@ -45,6 +55,13 @@ function loadState(): {
     return {
       avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
       username: 'ADVENTURER',
+      financialProfile: {          // ADD THIS
+      monthlyIncome: 15000,
+      incomeLabel: '₹10,000-15,000',
+      livingSituation: 'PG/Hostel',
+      primaryGoal: 'General Literacy',
+      riskTolerance: 'Moderate',
+      },
       gold: 15000,
       gems: 50,
       level: 1,
@@ -79,7 +96,7 @@ function saveState(state: ReturnType<typeof loadState>) {
 export default function BudgetingCityView() {
   const router = useRouter();
   const [screen, setScreen] = useState<'game'>('game');
-  const [state, setState] = useState(loadState);
+  const [state, setState] = useState<ReturnType<typeof loadState>>(loadState);
   const [welcomeUsername, setWelcomeUsername] = useState(() => {
     try {
       const s = loadState();
