@@ -152,8 +152,10 @@ export default function MainGameView() {
     choices: string[];
     costs: number[];
     outcomes: Array<{ xp?: number; gold?: number; debt?: number; lesson?: string }>;
+    explanations?: string[];
   } | null>(null);
   const [dormOutcome, setDormOutcome] = useState<{ title: string; text: string; xp: number; gold: number } | null>(null);
+  const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<Array<{ role: string; content: string }>>([
     { role: 'ai', content: "Namaste! I'm your Socratic financial guide, Penny. What financial situation are you navigating today?" },
@@ -242,44 +244,53 @@ export default function MainGameView() {
   };
 
   const fetchDormScenario = async () => {
+    const fallback = {
+      situation: "Your roommate says they'll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?",
+      choices: [
+        'Equal split ₹5k each. Decline Spotify.',
+        'Equal split after NoBroker discount — ~₹4,500 each',
+      ],
+      costs: [5000, 4500],
+      outcomes: [{ xp: 60, gold: 150 }, { xp: 100, gold: 300 }],
+      explanations: [
+        'Splitting equally is fair, but skipping extras keeps your budget tight and predictable.',
+        'Negotiating a discount saves money upfront — a key budgeting skill.',
+      ],
+    };
     try {
       const res = await fetch('/api/generate-scenario', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           module: 'budgeting_1',
-          playerState: { gold: state.gold, level: state.level, avatar: state.avatar.type },
+          playerState: {
+            gold: state.gold,
+            level: state.level,
+            avatar: state.avatar.type,
+            financialProfile: state.financialProfile,
+          },
         }),
       });
       const data = await res.json();
-      if (data.situation) setDormScenario(data);
-      else setDormScenario({
-        situation:
-          'Your roommate says they\'ll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?',
-        choices: [
-          'Agree to split ₹6k/₹4k + Spotify — you pay ₹4,075/month',
-          'Equal split ₹5k each. Decline Spotify.',
-          'Equal split after NoBroker discount — ~₹4,500 each',
-        ],
-        costs: [4075, 5000, 4500],
-        outcomes: [{}, { xp: 60, gold: 150 }, { xp: 100, gold: 300 }],
-      });
+      if (data.situation) {
+        setDormScenario({
+          ...data,
+          choices: (data.choices ?? []).slice(0, 2),
+          costs: (data.costs ?? []).slice(0, 2),
+          outcomes: (data.outcomes ?? []).slice(0, 2),
+          explanations: (data.explanations ?? fallback.explanations).slice(0, 2),
+        });
+      } else {
+        setDormScenario(fallback);
+      }
     } catch {
-      setDormScenario({
-        situation: 'Your roommate says they\'ll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?',
-        choices: [
-          'Agree to split ₹6k/₹4k + Spotify — you pay ₹4,075/month',
-          'Equal split ₹5k each. Decline Spotify.',
-          'Equal split after NoBroker discount — ~₹4,500 each',
-        ],
-        costs: [4075, 5000, 4500],
-        outcomes: [{}, { xp: 60, gold: 150 }, { xp: 100, gold: 300 }],
-      });
+      setDormScenario(fallback);
     }
   };
 
   const openDorms = () => {
     setDormOutcome(null);
+    setSelectedChoice(null);
     fetchDormScenario();
     setModal('dorms');
   };
@@ -298,7 +309,8 @@ export default function MainGameView() {
   };
 
   const dormChoice = (i: number) => {
-    if (!dormScenario) return;
+    if (!dormScenario || selectedChoice !== null) return;
+    setSelectedChoice(i);
     const cost = dormScenario.costs[i] ?? 0;
     const out = dormScenario.outcomes[i] ?? {};
     const xp = out.xp ?? 0;
@@ -312,12 +324,17 @@ export default function MainGameView() {
     }));
     setDormOutcome({
       title: `Option ${String.fromCharCode(65 + i)}`,
-      text: out.lesson ?? 'You made a choice. Consider asking the AI Tutor why this matters for your budget!',
+      text: dormScenario.explanations?.[i] ?? out.lesson ?? 'Consider asking the AI Tutor for more details!',
       xp,
       gold: out.gold ?? 0,
     });
     showToast(`+${xp} XP earned! 🎉`);
     markQuestStep('q-roommate', 1);
+  };
+
+  const handleAskTutorAboutDilemma = () => {
+    const ctx = dormScenario?.situation?.substring(0, 100) ?? 'this financial decision';
+    sendTutor(`Help me understand why this financial situation matters for my budget: "${ctx}"`);
   };
 
   const sendTutor = async (prefill?: string) => {
@@ -752,59 +769,91 @@ export default function MainGameView() {
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[200] p-4" onClick={() => setModal(null)}>
           <div className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] rounded max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center p-4 border-b border-[var(--panel-border)]">
-              <span className="font-pixel text-gold">🏠 Dorms — Roommate Situation</span>
+              <span className="font-pixel text-gold">🏠 Dorms — Financial Dilemma</span>
               <button onClick={() => setModal(null)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
             </div>
             <div className="p-6">
               <div className="mb-4">
                 <div className="font-pixel text-gold text-xs mb-2">{dormScenario?.character ?? 'Roommate Rahul'}:</div>
                 <p className="text-[var(--text)] text-sm leading-relaxed">
-                  {dormScenario?.situation ?? 'Loading scenario from Grok...'}
+                  {dormScenario?.situation ?? 'Loading scenario...'}
                 </p>
                 <div className="font-pixel text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/25 rounded px-3 py-2 mt-3">
-                  [DECISION REQUIRED: Consider fairness, financial risk, and long-term roommate relationship.]
+                  [DECISION REQUIRED: Consider fairness, financial risk, and long-term relationships.]
                 </div>
               </div>
-              {!dormOutcome ? (
-                <div className="grid gap-3">
-                  {dormScenario?.choices?.map((choice, i) => (
+
+              {/* Choices — always visible, highlighted after selection */}
+              <div className="grid gap-3 mb-4">
+                {dormScenario?.choices?.map((choice, i) => {
+                  const chosen = selectedChoice === i;
+                  const unchosen = selectedChoice !== null && !chosen;
+                  return (
                     <button
                       key={i}
                       onClick={() => dormChoice(i)}
-                      className="text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5 flex justify-between items-center"
+                      disabled={selectedChoice !== null}
+                      className={`text-left p-4 rounded border flex justify-between items-center transition-all ${chosen
+                          ? 'border-green-500 bg-green-500/15'
+                          : unchosen
+                            ? 'border-white/10 bg-white/3 opacity-50'
+                            : 'border-white/15 hover:border-gold bg-white/5'
+                        }`}
                     >
-                      <span className="font-pixel text-gold text-xs">{choice}</span>
-                      <span className="text-sm text-[var(--text-muted)]">−₹{(dormScenario.costs[i] ?? 0).toLocaleString('en-IN')}</span>
+                      <span className="font-pixel text-gold text-xs">
+                        {chosen ? '✓ ' : ''}{choice}
+                      </span>
+                      <span className="text-sm text-[var(--text-muted)] flex-shrink-0 ml-2">
+                        −₹{(dormScenario.costs[i] ?? 0).toLocaleString('en-IN')}
+                      </span>
                     </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-green/10 border border-green/30 rounded p-4">
-                  <div className="font-pixel text-[var(--green-light)] text-xs mb-2">✅ {dormOutcome.title}</div>
-                  <p className="text-sm text-[var(--text)] mb-4">{dormOutcome.text}</p>
+                  );
+                })}
+              </div>
+
+              {/* Outcome panel — shown after selection */}
+              {dormOutcome && (
+                <div className="bg-green-900/20 border border-green-500/30 rounded p-4 mb-4">
+                  <div className="font-pixel text-green-400 text-xs mb-2">✅ {dormOutcome.title} chosen</div>
+                  <p className="text-sm text-[var(--text)] leading-relaxed mb-3">{dormOutcome.text}</p>
                   <div className="flex gap-2 flex-wrap">
                     <span className="font-pixel text-xs bg-blue-500/20 text-blue-200 px-2 py-1 rounded">+{dormOutcome.xp} XP</span>
-                    {dormOutcome.gold > 0 && <span className="font-pixel text-xs bg-gold/20 text-gold px-2 py-1 rounded">+₹{dormOutcome.gold} Gold</span>}
+                    {dormOutcome.gold > 0 && (
+                      <span className="font-pixel text-xs bg-gold/20 text-gold px-2 py-1 rounded">+₹{dormOutcome.gold} Gold</span>
+                    )}
                   </div>
-                  <div className="flex gap-2 mt-4 flex-wrap">
-                    <button onClick={() => sendTutor('Why is it risky to let my roommate delay UPI payment?')} className="font-pixel text-xs bg-green text-white px-3 py-1.5 rounded">
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex gap-2 flex-wrap">
+                {dormOutcome && (
+                  <>
+                    <button
+                      onClick={handleAskTutorAboutDilemma}
+                      className="font-pixel text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-500 transition-colors"
+                    >
                       🤖 Ask AI Tutor
                     </button>
                     <button
                       onClick={() => {
                         setDormOutcome(null);
+                        setSelectedChoice(null);
                         fetchDormScenario();
                       }}
                       className="font-pixel text-xs bg-blue-500/20 text-blue-200 border border-blue-500/40 px-3 py-1.5 rounded"
                     >
                       ♻️ New Scenario
                     </button>
-                    <button onClick={() => setModal(null)} className="font-pixel text-xs bg-gold/15 text-gold border border-gold/30 px-3 py-1.5 rounded">
-                      ← Back to City
-                    </button>
-                  </div>
-                </div>
-              )}
+                  </>
+                )}
+                <button
+                  onClick={() => setModal(null)}
+                  className="font-pixel text-xs bg-gold/15 text-gold border border-gold/30 px-3 py-1.5 rounded"
+                >
+                  ← Back to City
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -914,8 +963,7 @@ export default function MainGameView() {
             {tutorMessages.map((m, i) => (
               <div
                 key={i}
-                className={`p-3 rounded text-sm ${m.role === 'user' ? 'bg-green/10 border border-green/20 ml-6' : 'bg-blue-500/15 border border-blue-500/25'
-                  }`}
+                className={`p-3 rounded text-sm ${m.role === 'user' ? 'bg-green/10 border border-green/20 ml-6' : 'bg-blue-500/15 border border-blue-500/25'}`}
               >
                 <div className="font-pixel text-xs mb-1 opacity-70">{m.role === 'user' ? 'You' : 'AI Tutor'}</div>
                 {m.content}
@@ -951,7 +999,6 @@ export default function MainGameView() {
         </div>
       )}
 
-      {/* Toast */}
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 font-pixel text-xs bg-[var(--panel)] border border-[var(--panel-border)] text-gold px-6 py-3 rounded z-[500] animate-in fade-in duration-300">
           {toast}

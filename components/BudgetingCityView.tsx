@@ -274,6 +274,11 @@ export default function BudgetingCityView() {
     markQuestStep('q-roommate', 1);
   };
 
+  const handleAskTutorAboutDilemma = () => {
+    const ctx = dormScenario?.situation?.substring(0, 100) ?? 'this financial decision';
+    sendTutor('Help me understand why this financial situation matters for my budget: ' + ctx);
+  };
+
   const sendTutor = async (prefill?: string) => {
     setTutorOpen(true);
     const msg = (prefill ?? tutorInput).trim();
@@ -289,7 +294,7 @@ export default function BudgetingCityView() {
           query: msg,
           gameState: { gold: state.gold, level: state.level, avatar: state.avatar, xp: state.xp },
           history: tutorMessages
-            .slice(-6)  // last 6 messages = 3 exchanges, enough context without bloating
+            .slice(-6)
             .map(m => ({
               role: m.role === 'user' ? 'user' : 'assistant',
               content: m.content,
@@ -485,68 +490,103 @@ export default function BudgetingCityView() {
       {/* Modal: Budgeting City */}
       {/* Modals */}
 
-      {/* Modal: Dorms (Grok scenario) */}
-      {modal === 'dorms' && (
-        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[200] p-4" onClick={() => setModal(null)}>
-          <div className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] rounded max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-4 border-b border-[var(--panel-border)]">
-              <span className="font-pixel text-gold">🏠 Dorms — Roommate Situation</span>
-              <button onClick={() => setModal(null)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
+    {/* Modal: Dorms */}
+    {modal === 'dorms' && (
+      <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[200] p-4" onClick={() => setModal(null)}>
+        <div className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] rounded max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="flex justify-between items-center p-4 border-b border-[var(--panel-border)]">
+            <span className="font-pixel text-gold">🏠 Dorms — Financial Dilemma</span>
+            <button onClick={() => setModal(null)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
+          </div>
+          <div className="p-6">
+            <div className="mb-4">
+              <div className="font-pixel text-gold text-xs mb-2">{dormScenario?.character ?? 'Roommate Rahul'}:</div>
+              <p className="text-[var(--text)] text-sm leading-relaxed">
+                {dormScenario?.situation ?? 'Loading scenario...'}
+              </p>
+              <div className="font-pixel text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/25 rounded px-3 py-2 mt-3">
+                [DECISION REQUIRED: Consider fairness, financial risk, and long-term relationships.]
+              </div>
             </div>
-            <div className="p-6">
-              <div className="mb-4">
-                <div className="font-pixel text-gold text-xs mb-2">{dormScenario?.character ?? 'Roommate Rahul'}:</div>
-                <p className="text-[var(--text)] text-sm leading-relaxed">
-                  {dormScenario?.situation ?? 'Loading scenario from Grok...'}
-                </p>
-                <div className="font-pixel text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/25 rounded px-3 py-2 mt-3">
-                  [DECISION REQUIRED: Consider fairness, financial risk, and long-term roommate relationship.]
+
+            {/* Choices — always visible, highlighted after selection */}
+            <div className="grid gap-3 mb-4">
+              {dormScenario?.choices?.map((choice, i) => {
+                const chosen = selectedChoice === i;
+                const unchosen = selectedChoice !== null && !chosen;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => dormChoice(i)}
+                    disabled={selectedChoice !== null}
+                    className={`text-left p-4 rounded border flex justify-between items-center transition-all ${
+                      chosen
+                        ? 'border-green-500 bg-green-500/15'
+                        : unchosen
+                        ? 'border-white/10 bg-white/3 opacity-50'
+                        : 'border-white/15 hover:border-gold bg-white/5'
+                    }`}
+                  >
+                    <span className="font-pixel text-gold text-xs">
+                      {chosen ? '✓ ' : ''}{choice}
+                    </span>
+                    <span className="text-sm text-[var(--text-muted)] flex-shrink-0 ml-2">
+                      −₹{(dormScenario.costs[i] ?? 0).toLocaleString('en-IN')}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Outcome panel — shown after selection */}
+            {dormOutcome && (
+              <div className="bg-green-900/20 border border-green-500/30 rounded p-4 mb-4">
+                <div className="font-pixel text-green-400 text-xs mb-2">✅ {dormOutcome.title} chosen</div>
+                <p className="text-sm text-[var(--text)] leading-relaxed mb-3">{dormOutcome.text}</p>
+                <div className="flex gap-2 flex-wrap">
+                  <span className="font-pixel text-xs bg-blue-500/20 text-blue-200 px-2 py-1 rounded">+{dormOutcome.xp} XP</span>
+                  {dormOutcome.gold > 0 && (
+                    <span className="font-pixel text-xs bg-gold/20 text-gold px-2 py-1 rounded">+₹{dormOutcome.gold} Gold</span>
+                  )}
                 </div>
               </div>
-              {!dormOutcome ? (
-                <div className="grid gap-3">
-                  {dormScenario?.choices?.map((choice, i) => (
-                    <button
-                      key={i}
-                      onClick={() => dormChoice(i)}
-                      className="text-left p-4 rounded border border-white/15 hover:border-gold bg-white/5 flex justify-between items-center"
-                    >
-                      <span className="font-pixel text-gold text-xs">{choice}</span>
-                      <span className="text-sm text-[var(--text-muted)]">−₹{(dormScenario.costs[i] ?? 0).toLocaleString('en-IN')}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-green/10 border border-green/30 rounded p-4">
-                  <div className="font-pixel text-[var(--green-light)] text-xs mb-2">✅ {dormOutcome.title}</div>
-                  <p className="text-sm text-[var(--text)] mb-4">{dormOutcome.text}</p>
-                  <div className="flex gap-2 flex-wrap">
-                    <span className="font-pixel text-xs bg-blue-500/20 text-blue-200 px-2 py-1 rounded">+{dormOutcome.xp} XP</span>
-                    {dormOutcome.gold > 0 && <span className="font-pixel text-xs bg-gold/20 text-gold px-2 py-1 rounded">+₹{dormOutcome.gold} Gold</span>}
-                  </div>
-                  <div className="flex gap-2 mt-4 flex-wrap">
-                    <button onClick={() => sendTutor('Why is it risky to let my roommate delay UPI payment?')} className="font-pixel text-xs bg-green text-white px-3 py-1.5 rounded">
-                      🤖 Ask AI Tutor
-                    </button>
-                    <button
-                      onClick={() => {
-                        setDormOutcome(null);
-                        fetchDormScenario();
-                      }}
-                      className="font-pixel text-xs bg-blue-500/20 text-blue-200 border border-blue-500/40 px-3 py-1.5 rounded"
-                    >
-                      ♻️ New Scenario
-                    </button>
-                    <button onClick={() => setModal(null)} className="font-pixel text-xs bg-gold/15 text-gold border border-gold/30 px-3 py-1.5 rounded">
-                      ← Back to City
-                    </button>
-                  </div>
-                </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-2 flex-wrap">
+              {dormOutcome && (
+                <>
+                  <button
+                    onClick={handleAskTutorAboutDilemma}
+                    className="font-pixel text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-500 transition-colors"
+                  >
+                    🤖 Ask AI Tutor
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDormOutcome(null);
+                      setSelectedChoice(null);
+                      fetchDormScenario();
+                    }}
+                    className="font-pixel text-xs bg-blue-500/20 text-blue-200 border border-blue-500/40 px-3 py-1.5 rounded"
+                  >
+                    ♻️ New Scenario
+                  </button>
+                </>
               )}
+              <button
+                onClick={() => setModal(null)}
+                className="font-pixel text-xs bg-gold/15 text-gold border border-gold/30 px-3 py-1.5 rounded"
+              >
+                ← Back to City
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
+    )}
+
+      
 
       {/* Modal: Budget Tetris */}
       {modal === 'tetris' && (
