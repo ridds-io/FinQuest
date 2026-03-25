@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
@@ -30,16 +29,30 @@ const AVATARS = [
 
 const STORAGE_KEY = 'finquest_state';
 
+type FinancialProfile = {
+  monthlyIncome: number;
+  incomeLabel: string;
+  livingSituation: string;
+  primaryGoal: string;
+  riskTolerance: string;
+};
+
+const INCOME_OPTIONS: Array<{ label: string; monthlyIncome: number }> = [
+  { label: 'Under ₹5,000', monthlyIncome: 2500 },
+  { label: '₹5,000-10,000', monthlyIncome: 7500 },
+  { label: '₹10,000-15,000', monthlyIncome: 12500 },
+  { label: '₹15,000-20,000', monthlyIncome: 17500 },
+  { label: 'Above ₹20,000', monthlyIncome: 25000 },
+];
+
+const LIVING_OPTIONS = ['Living at Home', 'PG/Hostel', 'Rented Flat', 'College Dorms'] as const;
+const GOAL_OPTIONS = ['Learn to Save', 'Manage Debt', 'Start Investing', 'General Literacy'] as const;
+const RISK_OPTIONS = ['Conservative', 'Moderate', 'Aggressive'] as const;
+
 function loadState(): {
   avatar: { emoji: string; name: string; type: string };
   username: string;
-  financialProfile: {          // ADD THIS
-      monthlyIncome: 15000,
-      incomeLabel: '₹10,000-15,000',
-      livingSituation: 'PG/Hostel',
-      primaryGoal: 'General Literacy',
-      riskTolerance: 'Moderate',
-  },
+  financialProfile: FinancialProfile;
   gold: number;
   gems: number;
   level: number;
@@ -70,7 +83,7 @@ function loadState(): {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
     if (s) return JSON.parse(s);
-  } catch {}
+  } catch { }
   return {
     avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
     username: 'ADVENTURER',
@@ -94,7 +107,7 @@ function loadState(): {
 function saveState(state: ReturnType<typeof loadState>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
+  } catch { }
 }
 
 export default function MainGameView() {
@@ -109,10 +122,22 @@ export default function MainGameView() {
   const [welcomeUsername, setWelcomeUsername] = useState(() => {
     try {
       const s = loadState();
-      return s.username || '';
+      return s.username && s.username !== 'ADVENTURER' ? s.username : '';
     } catch {
       return '';
     }
+  });
+  const [step1IncomeLabel, setStep1IncomeLabel] = useState<string>(() => {
+    try { return loadState().financialProfile.incomeLabel; } catch { return INCOME_OPTIONS[3].label; }
+  });
+  const [step1LivingSituation, setStep1LivingSituation] = useState<string>(() => {
+    try { return loadState().financialProfile.livingSituation; } catch { return LIVING_OPTIONS[0]; }
+  });
+  const [step1PrimaryGoal, setStep1PrimaryGoal] = useState<string>(() => {
+    try { return loadState().financialProfile.primaryGoal; } catch { return GOAL_OPTIONS[0]; }
+  });
+  const [step1RiskTolerance, setStep1RiskTolerance] = useState<string>(() => {
+    try { return loadState().financialProfile.riskTolerance; } catch { return RISK_OPTIONS[0]; }
   });
   const [sidebarEntries, setSidebarEntries] = useState<SidebarEntry[]>([
     ...QUEST_DEFINITIONS,
@@ -178,14 +203,24 @@ export default function MainGameView() {
   };
 
   const startGame = () => {
+    const cleaned = welcomeUsername.trim();
+    const username = cleaned ? cleaned.toUpperCase().slice(0, 14) : 'ADVENTURER';
+    setState((s) => ({ ...s, username }));
     if (typeof window !== 'undefined') sessionStorage.setItem('finquest_intro_done', 'true');
     setScreen('game');
   };
 
   const beginQuest = () => {
-    const cleaned = welcomeUsername.trim();
-    const username = cleaned ? cleaned.toUpperCase().slice(0, 14) : 'ADVENTURER';
-    setState((s) => ({ ...s, username }));
+    const monthlyIncome =
+      INCOME_OPTIONS.find((o) => o.label === step1IncomeLabel)?.monthlyIncome ?? INCOME_OPTIONS[3].monthlyIncome;
+    const financialProfile: FinancialProfile = {
+      monthlyIncome,
+      incomeLabel: step1IncomeLabel,
+      livingSituation: step1LivingSituation,
+      primaryGoal: step1PrimaryGoal,
+      riskTolerance: step1RiskTolerance,
+    };
+    setState((s) => ({ ...s, financialProfile }));
     setScreen('avatar');
   };
 
@@ -333,54 +368,104 @@ export default function MainGameView() {
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6">
           <div
             className="font-pixel text-4xl sm:text-5xl text-gold mb-3"
-            style={{
-              textShadow:
-                '3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',
-            }}
+            style={{ textShadow: '3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}
           >
             FinQuest
           </div>
-          <div className="font-pixel text-[11px] sm:text-xs text-[var(--text-muted)] mb-8">
+          <div className="font-pixel text-[11px] sm:text-xs text-[var(--text-muted)] mb-8 text-center">
             Welcome to FinQuest — A Monetary Odyssey
           </div>
 
+          {/* Step indicator */}
+          <div className="w-full max-w-xl mb-8">
+            <div className="font-pixel text-xs text-gold mb-2 text-center">Step 1 of 2</div>
+            <div className="flex gap-2">
+              <div className="flex-1 h-2 rounded bg-gold/35" />
+              <div className="flex-1 h-2 rounded bg-white/10" />
+            </div>
+          </div>
+
+          {/* Info cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 w-full max-w-5xl mb-8">
-            <div className="bg-black/30 border border-white/10 rounded-lg p-5">
-              <div className="font-pixel text-gold text-xs mb-2">🎮 How to Play</div>
+            <div className="bg-black/30 border border-white/10 rounded-lg p-5 hover:border-gold/30 transition-colors">
+              <div className="font-pixel text-gold text-xs mb-3">🎮 How to Play</div>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 Walk through an RPG city. Click buildings to enter financial scenarios. Make decisions. Learn by doing.
               </p>
             </div>
-            <div className="bg-black/30 border border-white/10 rounded-lg p-5">
-              <div className="font-pixel text-gold text-xs mb-2">🧠 What You'll Learn</div>
+            <div className="bg-black/30 border border-white/10 rounded-lg p-5 hover:border-gold/30 transition-colors">
+              <div className="font-pixel text-gold text-xs mb-3">🧠 What You'll Learn</div>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 Budgeting, saving, investing, loans — all through real Indian student situations like PG rent, UPI payments, chai habits.
               </p>
             </div>
-            <div className="bg-black/30 border border-white/10 rounded-lg p-5">
-              <div className="font-pixel text-gold text-xs mb-2">🏆 Your Goal</div>
+            <div className="bg-black/30 border border-white/10 rounded-lg p-5 hover:border-gold/30 transition-colors">
+              <div className="font-pixel text-gold text-xs mb-3">🏆 Your Goal</div>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 Complete quests, earn XP and Gold, unlock new city areas. Become financially literate before your first job.
               </p>
             </div>
           </div>
 
-          <div className="w-full max-w-xl bg-black/30 border border-white/10 rounded-lg p-5">
-            <label className="font-pixel text-xs text-[var(--text-muted)] block mb-2">Choose your username</label>
-            <input
-              type="text"
-              value={welcomeUsername}
-              onChange={(e) => setWelcomeUsername(e.target.value)}
-              placeholder="e.g. SANJANA"
-              className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold"
-              maxLength={14}
-            />
-            <button
-              onClick={beginQuest}
-              className="mt-4 w-full font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1 transition"
-            >
-              Begin Quest →
-            </button>
+          {/* Financial Profile form */}
+          <div className="w-full max-w-xl bg-[rgba(10,20,40,0.92)] border-2 border-[rgba(255,215,0,0.35)] rounded-lg p-5">
+            <div className="font-pixel text-gold text-xs mb-3 text-center">⚔️ Your Financial Profile</div>
+            <div className="space-y-4">
+              <div>
+                <label className="font-pixel text-[10px] text-[var(--text-muted)] block mb-2">Monthly Income</label>
+                <select
+                  value={step1IncomeLabel}
+                  onChange={(e) => setStep1IncomeLabel(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+                >
+                  {INCOME_OPTIONS.map((o) => (
+                    <option key={o.label} value={o.label}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="font-pixel text-[10px] text-[var(--text-muted)] block mb-2">Living Situation</label>
+                <select
+                  value={step1LivingSituation}
+                  onChange={(e) => setStep1LivingSituation(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+                >
+                  {LIVING_OPTIONS.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="font-pixel text-[10px] text-[var(--text-muted)] block mb-2">Primary Goal</label>
+                <select
+                  value={step1PrimaryGoal}
+                  onChange={(e) => setStep1PrimaryGoal(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+                >
+                  {GOAL_OPTIONS.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="font-pixel text-[10px] text-[var(--text-muted)] block mb-2">Risk Tolerance</label>
+                <select
+                  value={step1RiskTolerance}
+                  onChange={(e) => setStep1RiskTolerance(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+                >
+                  {RISK_OPTIONS.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={beginQuest}
+                className="w-full font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1 transition-transform border border-gold/30"
+              >
+                Next →
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -390,23 +475,43 @@ export default function MainGameView() {
   if (screen === 'avatar') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--dark)] p-6">
-        <Link href="/" className="font-pixel text-xs text-[var(--text-muted)] border border-white/20 px-4 py-2 rounded mb-6 hover:text-gold hover:border-gold">
+        <button
+          onClick={() => setScreen('welcome')}
+          className="font-pixel text-xs text-[var(--text-muted)] border border-white/20 px-4 py-2 rounded mb-6 hover:text-gold hover:border-gold transition-colors"
+        >
           ← Back
-        </Link>
+        </button>
+        <div className="w-full max-w-xl mb-4">
+          <div className="font-pixel text-xs text-gold mb-2 text-center">Step 2 of 2</div>
+          <div className="flex gap-2">
+            <div className="flex-1 h-2 rounded bg-gold/35" />
+            <div className="flex-1 h-2 rounded bg-gold/35" />
+          </div>
+        </div>
         <h1 className="font-pixel text-gold text-center mb-2">Choose Your Avatar</h1>
         <p className="text-[var(--text-muted)] text-center mb-8 max-w-lg">
           Your starting financial situation shapes your adventure. No judgment — every path teaches different lessons.
         </p>
+        <div className="w-full max-w-xl bg-black/30 border border-white/10 rounded-lg p-5 mb-8">
+          <label className="font-pixel text-xs text-[var(--text-muted)] block mb-2">Choose your username</label>
+          <input
+            type="text"
+            value={welcomeUsername}
+            onChange={(e) => setWelcomeUsername(e.target.value)}
+            placeholder="e.g. SANJANA"
+            className="w-full bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-gold transition-colors"
+            maxLength={14}
+          />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 max-w-4xl w-full mb-8">
           {AVATARS.map((a, i) => (
             <button
               key={a.name}
               onClick={() => selectAvatar(i)}
-              className={`p-6 rounded border-2 text-center transition ${
-                state.avatar.type === a.name
-                  ? 'border-gold bg-gold/10 shadow-lg shadow-gold/20'
-                  : 'border-white/20 bg-white/5 hover:border-gold/50'
-              }`}
+              className={`p-6 rounded border-2 text-center transition-all ${state.avatar.type === a.name
+                ? 'border-gold bg-gold/10 shadow-lg shadow-gold/20'
+                : 'border-white/20 bg-white/5 hover:border-gold/50'
+                }`}
             >
               <span className="text-4xl block mb-2">{a.emoji}</span>
               <div className="font-pixel text-xs text-gold mb-1">{a.name}</div>
@@ -416,7 +521,7 @@ export default function MainGameView() {
         </div>
         <button
           onClick={startGame}
-          className="font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1"
+          className="font-pixel text-sm bg-gold text-[var(--dark)] px-8 py-3 rounded shadow-lg hover:-translate-y-1 transition-transform"
         >
           ▶ Enter FinQuest World
         </button>
@@ -800,9 +905,8 @@ export default function MainGameView() {
             {tutorMessages.map((m, i) => (
               <div
                 key={i}
-                className={`p-3 rounded text-sm ${
-                  m.role === 'user' ? 'bg-green/10 border border-green/20 ml-6' : 'bg-blue-500/15 border border-blue-500/25'
-                }`}
+                className={`p-3 rounded text-sm ${m.role === 'user' ? 'bg-green/10 border border-green/20 ml-6' : 'bg-blue-500/15 border border-blue-500/25'
+                  }`}
               >
                 <div className="font-pixel text-xs mb-1 opacity-70">{m.role === 'user' ? 'You' : 'AI Tutor'}</div>
                 {m.content}
