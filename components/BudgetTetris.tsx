@@ -1,63 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-
+// ── Types ──────────────────────────────────────────────────────────────────
 type Category = 'needs' | 'wants' | 'savings';
 
-interface ExpenseTemplate {
-  id: string;
-  icon: string;
-  name: string; // <= 12 chars for clean UI
-  baseAmount: number; // baseline around 15,000 monthly income
-  correct: Category;
-  description: string;
-}
-
-const EXPENSE_TEMPLATES: ExpenseTemplate[] = [
-  { id: 'rent', icon: '🏠', name: 'PG Rent', baseAmount: 5000, correct: 'needs', description: 'Monthly PG' },
-  { id: 'groceries', icon: '🛒', name: 'Groceries', baseAmount: 2000, correct: 'needs', description: 'Weekly food' },
-  { id: 'mobile', icon: '📱', name: 'Mobile Bill', baseAmount: 300, correct: 'needs', description: 'Recharge' },
-  { id: 'bus', icon: '🚌', name: 'Bus/Auto', baseAmount: 800, correct: 'needs', description: 'Commute' },
-  { id: 'textbooks', icon: '📚', name: 'Textbooks', baseAmount: 600, correct: 'needs', description: 'Books' },
-
-  { id: 'chai', icon: '☕', name: 'Daily Chai', baseAmount: 600, correct: 'wants', description: 'Campus chai' },
-  { id: 'ott', icon: '🎬', name: 'OTT Apps', baseAmount: 499, correct: 'wants', description: 'Streaming' },
-  { id: 'dining', icon: '🍕', name: 'Eating Out', baseAmount: 800, correct: 'wants', description: 'Food outs' },
-  { id: 'gaming', icon: '🎮', name: 'Game Credits', baseAmount: 300, correct: 'wants', description: 'In-app' },
-  { id: 'gym', icon: '💪', name: 'Gym Fee', baseAmount: 500, correct: 'wants', description: 'Gym' },
-
-  { id: 'sip', icon: '📈', name: 'SIP Fund', baseAmount: 2000, correct: 'savings', description: 'Investment' },
-  { id: 'emergency', icon: '🚨', name: 'Emergency', baseAmount: 1000, correct: 'savings', description: 'Safety net' },
-];
-
-const CATEGORY_TO_INDEX: Record<Category, number> = {
-  needs: 0,
-  wants: 1,
-  savings: 2,
-};
-
-const CATEGORY_META: Record<
-  Category,
-  { fill: string; progress: string; label: string; dim: string; color: string }
-> = {
-  needs: { fill: 'bg-red-500', progress: 'bg-red-400', label: 'NEEDS', dim: 'bg-red-500/15', color: 'text-red-400' },
-  wants: { fill: 'bg-blue-500', progress: 'bg-blue-400', label: 'WANTS', dim: 'bg-blue-500/15', color: 'text-blue-400' },
-  savings: { fill: 'bg-green-500', progress: 'bg-green-400', label: 'SAVINGS', dim: 'bg-green-500/15', color: 'text-green-400' },
-};
-
-const ROWS = 12;
-
-type PlacedBlock = {
-  templateId: string;
+interface Expense {
   icon: string;
   name: string;
   amount: number;
-  correct: Category;
-};
-
-type CurrentBlock = PlacedBlock;
+  category: Category;
+}
 
 export interface BudgetTetrisProps {
   onClose: () => void;
@@ -65,520 +18,548 @@ export interface BudgetTetrisProps {
   monthlyIncome: number;
 }
 
-function clampInt(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, Math.round(n)));
+// ── Constants ──────────────────────────────────────────────────────────────
+const COLS = 10;
+const ROWS = 20;
+const CELL = 28; // px per cell
+const CANVAS_W = COLS * CELL;
+const CANVAS_H = ROWS * CELL;
+
+// Bottom 3 rows are the "sorting zone" — colour-coded columns
+const ZONE_ROW = ROWS - 3; // blocks that land here get auto-sorted
+
+// Column ranges for each category (10 cols split into 3 zones)
+const ZONES: Record<Category, [number, number]> = {
+  needs: [0, 3],   // cols 0-3
+  wants: [3, 7],   // cols 3-6
+  savings: [7, 10],  // cols 7-9
+};
+
+const ZONE_COLORS: Record<Category, string> = {
+  needs: '#ef4444',
+  wants: '#3b82f6',
+  savings: '#22c55e',
+};
+
+const ZONE_LABELS: Record<Category, string> = {
+  needs: 'NEEDS',
+  wants: 'WANTS',
+  savings: 'SAVINGS',
+};
+
+// Tetromino shapes (each is array of [row, col] offsets from pivot)
+const SHAPES: number[][][] = [
+  [[0, 0], [0, 1], [0, 2], [0, 3]],           // I
+  [[0, 0], [0, 1], [1, 0], [1, 1]],           // O
+  [[0, 1], [1, 0], [1, 1], [1, 2]],           // T
+  [[0, 0], [1, 0], [1, 1], [1, 2]],           // J
+  [[0, 2], [1, 0], [1, 1], [1, 2]],           // L
+  [[0, 0], [0, 1], [1, 1], [1, 2]],           // S
+  [[0, 1], [0, 2], [1, 0], [1, 1]],           // Z
+];
+
+const PIECE_COLORS = ['#06b6d4', '#f59e0b', '#a855f7', '#f97316', '#ec4899', '#10b981', '#6366f1'];
+
+const EXPENSES: Expense[] = [
+  { icon: '🏠', name: 'PG Rent', amount: 5000, category: 'needs' },
+  { icon: '🛒', name: 'Groceries', amount: 2000, category: 'needs' },
+  { icon: '📱', name: 'Mobile Bill', amount: 300, category: 'needs' },
+  { icon: '🚌', name: 'Bus/Auto', amount: 800, category: 'needs' },
+  { icon: '📚', name: 'Textbooks', amount: 600, category: 'needs' },
+  { icon: '☕', name: 'Daily Chai', amount: 600, category: 'wants' },
+  { icon: '🎬', name: 'OTT Apps', amount: 499, category: 'wants' },
+  { icon: '🍕', name: 'Eating Out', amount: 800, category: 'wants' },
+  { icon: '🎮', name: 'Game Credits', amount: 300, category: 'wants' },
+  { icon: '💪', name: 'Gym Fee', amount: 500, category: 'wants' },
+  { icon: '📈', name: 'SIP Fund', amount: 2000, category: 'savings' },
+  { icon: '🚨', name: 'Emergency', amount: 1000, category: 'savings' },
+  { icon: '🏦', name: 'FD Deposit', amount: 1500, category: 'savings' },
+];
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function randInt(n: number) { return Math.floor(Math.random() * n); }
+function pickExpense(): Expense { return EXPENSES[randInt(EXPENSES.length)]; }
+function pickShape(): { cells: number[][]; color: string } {
+  const i = randInt(SHAPES.length);
+  return { cells: SHAPES[i], color: PIECE_COLORS[i] };
 }
 
-function pickWeighted<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+function rotate(cells: number[][]): number[][] {
+  // 90° clockwise: [r,c] → [c, maxR-r]
+  const maxR = Math.max(...cells.map(([r]) => r));
+  return cells.map(([r, c]) => [c, maxR - r]);
 }
 
-function scaleAmount(base: number, income: number) {
-  const factor = income / 15000;
-  return clampInt(base * factor, 80, 1000000);
+function collides(
+  cells: number[][],
+  pr: number, pc: number,
+  board: (string | null)[][]
+): boolean {
+  for (const [dr, dc] of cells) {
+    const r = pr + dr, c = pc + dc;
+    if (r >= ROWS || c < 0 || c >= COLS) return true;
+    if (r >= 0 && board[r][c] !== null) return true;
+  }
+  return false;
 }
 
+function emptyBoard(): (string | null)[][] {
+  return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+}
+
+// Returns new board + lines cleared
+function lockAndClear(
+  board: (string | null)[][],
+  cells: number[][], pr: number, pc: number, color: string
+): { board: (string | null)[][]; cleared: number } {
+  const next = board.map((row) => [...row]);
+  for (const [dr, dc] of cells) {
+    const r = pr + dr, c = pc + dc;
+    if (r >= 0) next[r][c] = color;
+  }
+  const kept = next.filter((row) => row.some((v) => v === null));
+  const cleared = ROWS - kept.length;
+  const newBoard = [
+    ...Array.from({ length: cleared }, () => Array(COLS).fill(null) as (string | null)[]),
+    ...kept,
+  ];
+  return { board: newBoard, cleared };
+}
+
+// Determine which zone a piece lands in based on its average column
+function landingZone(cells: number[][], pc: number): Category {
+  const avgCol = cells.reduce((s, [, dc]) => s + pc + dc, 0) / cells.length;
+  if (avgCol < ZONES.wants[0]) return 'needs';
+  if (avgCol < ZONES.savings[0]) return 'wants';
+  return 'savings';
+}
+
+// ── Component ──────────────────────────────────────────────────────────────
 export function BudgetTetris({ onClose, onGameOver, monthlyIncome }: BudgetTetrisProps) {
-  const [running, setRunning] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Game state in refs so the RAF loop always sees fresh values
+  const boardRef = useRef<(string | null)[][]>(emptyBoard());
+  const cellsRef = useRef<number[][]>([]);
+  const colorRef = useRef<string>('#fff');
+  const prRef = useRef(0);   // piece row
+  const pcRef = useRef(0);   // piece col
+  const expenseRef = useRef<Expense>(pickExpense());
+  const nextExpRef = useRef<Expense>(pickExpense());
+  const nextShapeRef = useRef(pickShape());
+  const scoreRef = useRef(0);
+  const correctRef = useRef(0);
+  const totalRef = useRef(0);
+  const linesRef = useRef(0);
+  const levelRef = useRef(1);
+  const dropIntervalRef = useRef(800); // ms
+  const lastDropRef = useRef(0);
+  const runningRef = useRef(false);
+  const rafRef = useRef<number>(0);
+
+  // React state for UI panels only (not the canvas)
+  const [started, setStarted] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
-  const [correctPlacements, setCorrectPlacements] = useState(0);
-  const [totalPlacedBlocks, setTotalPlacedBlocks] = useState(0);
+  const [lines, setLines] = useState(0);
+  const [level, setLevel] = useState(1);
+  const [correct, setCorrect] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [currentExp, setCurrentExp] = useState<Expense>(expenseRef.current);
+  const [nextExp, setNextExp] = useState<Expense>(nextExpRef.current);
+  const [feedback, setFeedback] = useState<{ text: string; ok: boolean } | null>(null);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const targets = useMemo(() => {
-    const needs = Math.round(monthlyIncome * 0.5);
-    const wants = Math.round(monthlyIncome * 0.3);
-    const savings = Math.round(monthlyIncome * 0.2);
-    return { needs, wants, savings };
-  }, [monthlyIncome]);
-
-  const [used, setUsed] = useState<{ needs: number; wants: number; savings: number }>({
-    needs: 0,
-    wants: 0,
-    savings: 0,
-  });
-
-  const remaining = {
-    needs: Math.max(0, targets.needs - used.needs),
-    wants: Math.max(0, targets.wants - used.wants),
-    savings: Math.max(0, targets.savings - used.savings),
+  const targets = {
+    needs: Math.round(monthlyIncome * 0.5),
+    wants: Math.round(monthlyIncome * 0.3),
+    savings: Math.round(monthlyIncome * 0.2),
   };
+  const usedRef = useRef({ needs: 0, wants: 0, savings: 0 });
+  const [used, setUsed] = useState({ needs: 0, wants: 0, savings: 0 });
 
-  const totalRemaining = remaining.needs + remaining.wants + remaining.savings;
+  // ── Spawn ────────────────────────────────────────────────────────────────
+  const spawnPiece = useCallback(() => {
+    const { cells, color } = nextShapeRef.current;
+    const exp = nextExpRef.current;
+    const startCol = Math.floor((COLS - 4) / 2);
+    const startRow = 0;
 
-  const [stacks, setStacks] = useState<Array<PlacedBlock[]>>([[], [], []]);
-  const [current, setCurrent] = useState<CurrentBlock | null>(null);
-  const [fallY, setFallY] = useState(0); // 0..stackHeight
-  const [activeCol, setActiveCol] = useState<number>(1); // start in WANTS
+    if (collides(cells, startRow, startCol, boardRef.current)) {
+      // Game over
+      runningRef.current = false;
+      setGameOver(true);
+      onGameOver(scoreRef.current, correctRef.current, totalRef.current);
+      return;
+    }
 
-  const [speedMs, setSpeedMs] = useState(2000);
-  const blocksSinceSpeedUp = useRef(0);
+    cellsRef.current = cells;
+    colorRef.current = color;
+    prRef.current = startRow;
+    pcRef.current = startCol;
+    expenseRef.current = exp;
+    setCurrentExp(exp);
 
-  const [skipsLeft, setSkipsLeft] = useState(2);
-  const [consecutiveSkips, setConsecutiveSkips] = useState(0);
+    // Prepare next
+    nextShapeRef.current = pickShape();
+    nextExpRef.current = pickExpense();
+    setNextExp(nextExpRef.current);
+  }, [onGameOver]);
 
-  const [flash, setFlash] = useState<{ kind: 'correct' | 'wrong'; key: number } | null>(null);
-  const flashTimer = useRef<number | null>(null);
+  // ── Lock piece ───────────────────────────────────────────────────────────
+  const lockPiece = useCallback(() => {
+    const { board: newBoard, cleared } = lockAndClear(
+      boardRef.current, cellsRef.current, prRef.current, pcRef.current, colorRef.current
+    );
+    boardRef.current = newBoard;
 
-  const playAreaRef = useRef<HTMLDivElement | null>(null);
+    // Scoring
+    const zone = landingZone(cellsRef.current, pcRef.current);
+    const exp = expenseRef.current;
+    const ok = zone === exp.category;
+    const pts = ok ? (cleared > 0 ? 100 + cleared * 50 : 50) : -20;
 
-  const generateBlock = useCallback((): CurrentBlock => {
-    // Choose a template and scale its amount based on income.
-    // This keeps blocks meaningfully related to the student's income level.
-    const template = pickWeighted(EXPENSE_TEMPLATES);
-    const amount = scaleAmount(template.baseAmount, monthlyIncome);
-    return {
-      templateId: template.id,
-      icon: template.icon,
-      name: template.name,
-      amount,
-      correct: template.correct,
+    scoreRef.current += pts;
+    totalRef.current += 1;
+    linesRef.current += cleared;
+    if (ok) correctRef.current += 1;
+
+    usedRef.current = { ...usedRef.current, [zone]: usedRef.current[zone] + exp.amount };
+    setUsed({ ...usedRef.current });
+
+    // Level up every 5 lines
+    const newLevel = Math.floor(linesRef.current / 5) + 1;
+    levelRef.current = newLevel;
+    dropIntervalRef.current = Math.max(150, 800 - (newLevel - 1) * 80);
+
+    setScore(scoreRef.current);
+    setLines(linesRef.current);
+    setLevel(newLevel);
+    setCorrect(correctRef.current);
+    setTotal(totalRef.current);
+
+    // Feedback toast
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    setFeedback({
+      text: ok
+        ? `✓ ${exp.icon} ${exp.name} → ${ZONE_LABELS[exp.category]}!`
+        : `✗ ${exp.icon} ${exp.name} belongs in ${ZONE_LABELS[exp.category]}`,
+      ok,
+    });
+    feedbackTimer.current = setTimeout(() => setFeedback(null), 1800);
+
+    spawnPiece();
+  }, [spawnPiece]);
+
+  // ── Move helpers ─────────────────────────────────────────────────────────
+  const tryMove = useCallback((dr: number, dc: number) => {
+    const nr = prRef.current + dr;
+    const nc = pcRef.current + dc;
+    if (!collides(cellsRef.current, nr, nc, boardRef.current)) {
+      prRef.current = nr;
+      pcRef.current = nc;
+      return true;
+    }
+    return false;
+  }, []);
+
+  const tryRotate = useCallback(() => {
+    const rotated = rotate(cellsRef.current);
+    if (!collides(rotated, prRef.current, pcRef.current, boardRef.current)) {
+      cellsRef.current = rotated;
+    }
+  }, []);
+
+  const hardDrop = useCallback(() => {
+    while (tryMove(1, 0)) { }
+    lockPiece();
+  }, [tryMove, lockPiece]);
+
+  // ── Draw ─────────────────────────────────────────────────────────────────
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Background
+    ctx.fillStyle = '#0a0e1a';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Zone backgrounds (bottom 3 rows)
+    const zoneEntries = Object.entries(ZONES) as [Category, [number, number]][];
+    for (const [cat, [c0, c1]] of zoneEntries) {
+      ctx.fillStyle = ZONE_COLORS[cat] + '22';
+      ctx.fillRect(c0 * CELL, ZONE_ROW * CELL, (c1 - c0) * CELL, 3 * CELL);
+      ctx.strokeStyle = ZONE_COLORS[cat] + '66';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(c0 * CELL, ZONE_ROW * CELL, (c1 - c0) * CELL, 3 * CELL);
+    }
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 0.5;
+    for (let r = 0; r < ROWS; r++) {
+      ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(CANVAS_W, r * CELL); ctx.stroke();
+    }
+    for (let c = 0; c <= COLS; c++) {
+      ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, CANVAS_H); ctx.stroke();
+    }
+
+    // Zone labels
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    for (const [cat, [c0, c1]] of zoneEntries) {
+      ctx.fillStyle = ZONE_COLORS[cat];
+      ctx.fillText(ZONE_LABELS[cat], ((c0 + c1) / 2) * CELL, (ZONE_ROW + 1.5) * CELL);
+    }
+
+    // Placed blocks
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const color = boardRef.current[r][c];
+        if (!color) continue;
+        ctx.fillStyle = color;
+        ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, 4);
+      }
+    }
+
+    // Ghost piece (drop preview)
+    let ghostRow = prRef.current;
+    while (!collides(cellsRef.current, ghostRow + 1, pcRef.current, boardRef.current)) ghostRow++;
+    if (ghostRow !== prRef.current) {
+      ctx.fillStyle = colorRef.current + '33';
+      for (const [dr, dc] of cellsRef.current) {
+        const r = ghostRow + dr, c = pcRef.current + dc;
+        if (r >= 0) ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2);
+      }
+    }
+
+    // Active piece
+    ctx.fillStyle = colorRef.current;
+    for (const [dr, dc] of cellsRef.current) {
+      const r = prRef.current + dr, c = pcRef.current + dc;
+      if (r >= 0) {
+        ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, 4);
+        ctx.fillStyle = colorRef.current;
+      }
+    }
+
+    // Expense label on active piece (center cell)
+    if (cellsRef.current.length > 0) {
+      const midCell = cellsRef.current[Math.floor(cellsRef.current.length / 2)];
+      const lr = prRef.current + midCell[0];
+      const lc = pcRef.current + midCell[1];
+      if (lr >= 0) {
+        ctx.font = '13px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(expenseRef.current.icon, lc * CELL + CELL / 2, lr * CELL + CELL / 2 + 5);
+      }
+    }
+  }, []);
+
+  // ── Game loop ─────────────────────────────────────────────────────────────
+  const loop = useCallback((ts: number) => {
+    if (!runningRef.current) return;
+    if (ts - lastDropRef.current > dropIntervalRef.current) {
+      lastDropRef.current = ts;
+      if (!tryMove(1, 0)) lockPiece();
+    }
+    draw();
+    rafRef.current = requestAnimationFrame(loop);
+  }, [draw, lockPiece, tryMove]);
+
+  // ── Keyboard ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!runningRef.current) return;
+      switch (e.key) {
+        case 'ArrowLeft': e.preventDefault(); tryMove(0, -1); break;
+        case 'ArrowRight': e.preventDefault(); tryMove(0, 1); break;
+        case 'ArrowDown': e.preventDefault(); if (!tryMove(1, 0)) lockPiece(); break;
+        case 'ArrowUp': e.preventDefault(); tryRotate(); break;
+        case ' ': e.preventDefault(); hardDrop(); break;
+      }
     };
-  }, [monthlyIncome]);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [tryMove, tryRotate, hardDrop, lockPiece]);
 
-  const endGame = useCallback((finalScore: number, finalCorrect: number, totalBlocks: number) => {
-    // Bonus when all budgets end within 10% of their target.
-    const needsOk = Math.abs(targets.needs - used.needs) <= targets.needs * 0.1;
-    const wantsOk = Math.abs(targets.wants - used.wants) <= targets.wants * 0.1;
-    const savingsOk = Math.abs(targets.savings - used.savings) <= targets.savings * 0.1;
+  // ── Start ─────────────────────────────────────────────────────────────────
+  const startGame = useCallback(() => {
+    boardRef.current = emptyBoard();
+    scoreRef.current = 0;
+    correctRef.current = 0;
+    totalRef.current = 0;
+    linesRef.current = 0;
+    levelRef.current = 1;
+    dropIntervalRef.current = 800;
+    lastDropRef.current = 0;
+    usedRef.current = { needs: 0, wants: 0, savings: 0 };
+    nextShapeRef.current = pickShape();
+    nextExpRef.current = pickExpense();
+    runningRef.current = true;
 
-    const bonus = needsOk && wantsOk && savingsOk ? 50 : 0;
-    const final = finalScore + bonus;
-    onGameOver(final, finalCorrect, totalBlocks);
-    setRunning(false);
-  }, [onGameOver, targets, used]);
-
-  const placeBlock = useCallback(() => {
-    if (!current) return;
-
-    const col = activeCol;
-    const chosenCategory = (col === 0 ? 'needs' : col === 1 ? 'wants' : 'savings') as Category;
-    const correctCategory = current.correct;
-    const isCorrect = chosenCategory === correctCategory;
-
-    const stackHeight = stacks[col]?.length ?? 0;
-    if (stackHeight >= ROWS) {
-      endGame(score, correctPlacements, totalPlacedBlocks);
-      return;
-    }
-
-    setStacks((prev) => {
-      const next = [...prev];
-      next[col] = [...next[col], current];
-      return next;
-    });
-
-    setUsed((prev) => {
-      const nextUsed = { ...prev, [chosenCategory]: prev[chosenCategory] + current.amount };
-      // Determine end condition based on remaining budget.
-      if (totalRemaining - current.amount <= 0) {
-        // Fire flash quickly but end the game next tick to let UI show the placement.
-      }
-      return nextUsed;
-    });
-
-    setTotalPlacedBlocks((n) => n + 1);
-
-    setScore((prev) => prev + (isCorrect ? 10 : -5));
-    if (isCorrect) setCorrectPlacements((c) => c + 1);
-
-    setFlash({ kind: isCorrect ? 'correct' : 'wrong', key: Date.now() });
-    if (flashTimer.current) window.clearTimeout(flashTimer.current);
-    flashTimer.current = window.setTimeout(() => setFlash(null), 320);
-
-    // Reset skip mechanic after a successful placement attempt.
-    setConsecutiveSkips(0);
-    setSkipsLeft(2);
-
-    // Advance speed every 5 placed blocks (moderate difficulty).
-    blocksSinceSpeedUp.current += 1;
-    if (blocksSinceSpeedUp.current % 5 === 0) {
-      setSpeedMs((ms) => Math.max(650, Math.round(ms * 0.85)));
-    }
-
-    setCurrent(null);
-    setFallY(0);
-    // Next block spawn on next render frame.
-  }, [
-    activeCol,
-    correctPlacements,
-    current,
-    endGame,
-    score,
-    stacks,
-    totalPlacedBlocks,
-    totalRemaining,
-  ]);
-
-  const spawnNext = useCallback(() => {
-    setCurrent(generateBlock());
-    setFallY(0);
-    setActiveCol(1);
-  }, [generateBlock]);
-
-  // Game loop: fall current block to stack height.
-  useEffect(() => {
-    if (!running || !current) return;
-    const col = activeCol;
-    const stackHeight = stacks[col]?.length ?? 0;
-    if (stackHeight === 0 && fallY === 0 && speedMs < 650) {
-      // keep eslint happy; no-op
-    }
-
-    const t = window.setTimeout(() => {
-      const nextFallY = fallY + 1;
-      if (nextFallY >= stackHeight) {
-        // Place when it reaches bottom of current stack.
-        setFallY(stackHeight);
-        placeBlock();
-      } else {
-        setFallY(nextFallY);
-      }
-    }, speedMs);
-
-    return () => window.clearTimeout(t);
-  }, [activeCol, current, fallY, placeBlock, running, speedMs, stacks]);
-
-  // Spawn initial block.
-  useEffect(() => {
-    if (!running) return;
-    if (current) return;
-    // Budget depleted check.
-    if (totalRemaining <= 0) {
-      endGame(score, correctPlacements, totalPlacedBlocks);
-      return;
-    }
-    spawnNext();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, current]);
-
-  // Re-check budget depletion when used changes after placement.
-  useEffect(() => {
-    if (!running) return;
-    if (totalRemaining <= 0) {
-      endGame(score, correctPlacements, totalPlacedBlocks);
-    }
-  }, [running, totalRemaining, endGame, score, correctPlacements, totalPlacedBlocks]);
-
-  const handleMove = useCallback((dir: -1 | 1) => {
-    if (!running || !current) return;
-    setActiveCol((c) => Math.max(0, Math.min(2, c + dir)));
-  }, [current, running]);
-
-  const handleDrop = useCallback(() => {
-    if (!running || !current) return;
-    const col = activeCol;
-    const stackHeight = stacks[col]?.length ?? 0;
-    setFallY(stackHeight);
-    placeBlock();
-  }, [activeCol, current, placeBlock, running, stacks]);
-
-  const handleSkip = useCallback(() => {
-    if (!running || !current) return;
-    if (consecutiveSkips >= 2) return;
-    // Skip: remove block, no budget change.
-    setConsecutiveSkips((n) => n + 1);
-    setSkipsLeft((left) => Math.max(0, left - 1));
-    setCurrent(null);
-    setFallY(0);
-    setFlash({ kind: 'wrong', key: Date.now() }); // subtle cue
-    if (flashTimer.current) window.clearTimeout(flashTimer.current);
-    flashTimer.current = window.setTimeout(() => setFlash(null), 160);
-  }, [consecutiveSkips, current, running]);
-
-  const start = useCallback(() => {
-    setRunning(true);
-    setScore(0);
-    setCorrectPlacements(0);
-    setTotalPlacedBlocks(0);
+    setScore(0); setLines(0); setLevel(1); setCorrect(0); setTotal(0);
     setUsed({ needs: 0, wants: 0, savings: 0 });
-    setStacks([[], [], []]);
-    setCurrent(null);
-    setFallY(0);
-    setSpeedMs(2000);
-    blocksSinceSpeedUp.current = 0;
-    setSkipsLeft(2);
-    setConsecutiveSkips(0);
-  }, []);
+    setGameOver(false); setStarted(true); setFeedback(null);
 
-  // Keyboard controls.
-  useEffect(() => {
-    if (!running) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        handleMove(-1);
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        handleMove(1);
-      } else if (e.key === 'ArrowDown' || e.key === ' ') {
-        e.preventDefault();
-        handleDrop();
-      } else if (e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        handleSkip();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleDrop, handleMove, handleSkip, running]);
+    spawnPiece();
+    rafRef.current = requestAnimationFrame(loop);
+  }, [spawnPiece, loop]);
 
-  const stop = useCallback(() => {
-    setRunning(false);
-    setCurrent(null);
-    setFallY(0);
-  }, []);
+  useEffect(() => () => { cancelAnimationFrame(rafRef.current); }, []);
 
-  // Prevent accidental scroll zoom on mobile while playing.
-  useEffect(() => {
-    if (!running) return;
-    const onTouchMove = (e: TouchEvent) => {
-      if (e.cancelable) e.preventDefault();
-    };
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    return () => document.removeEventListener('touchmove', onTouchMove);
-  }, [running]);
-
-  const CategoryProgressBar = ({ cat }: { cat: Category }) => {
-    const target = cat === 'needs' ? targets.needs : cat === 'wants' ? targets.wants : targets.savings;
-    const val = used[cat];
-    const pct = target <= 0 ? 0 : Math.min(100, Math.round((val / target) * 100));
-    const over = val > target;
-    const meta = CATEGORY_META[cat];
-    return (
-      <div className="flex items-center gap-3">
-        <div className="w-[66px] font-pixel text-[9px] text-[var(--text-muted)]">{meta.label}</div>
-        <div className="flex-1 h-2 bg-black/40 rounded overflow-hidden border border-white/10">
-          <div
-            className={`h-full transition-all ${over ? 'bg-red-500' : meta.progress}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <div className={`w-[92px] text-right font-pixel text-[9px] ${over ? 'text-red-300' : 'text-gold'}`}>
-          {val.toLocaleString('en-IN')} / {target.toLocaleString('en-IN')}
-        </div>
-      </div>
-    );
-  };
-
-  const getStackCellAt = (col: number, row: number) => {
-    // row 0 is bottom for display mapping.
-    const stack = stacks[col];
-    const idxFromTop = stack.length - 1 - row;
-    if (idxFromTop < 0 || idxFromTop >= stack.length) return null;
-    return stack[idxFromTop] ?? null;
-  };
-
-  const renderBoard = () => {
-    const currentCategory = current ? current.correct : 'needs';
-    const currentRowFromBottom = Math.min(ROWS - 1, Math.max(0, fallY));
-    return (
-      <div
-        ref={playAreaRef}
-        className="relative w-full max-w-[520px] mx-auto h-[264px]"
-      >
-        <div className="absolute inset-0 bg-black/30 rounded-lg border-2 border-[var(--panel-border)]" />
-        {/* columns */}
-        <div className="absolute inset-0 grid grid-cols-3">
-          {[0, 1, 2].map((col) => (
-            <div key={col} className="relative border-l border-white/5 last:border-r border-r border-white/5">
-              <div className="absolute inset-0 grid grid-rows-12">
-                {Array.from({ length: ROWS }).map((_, rowIdx) => {
-                  const block = getStackCellAt(col, ROWS - 1 - rowIdx);
-                  const isActive = current && col === activeCol && currentRowFromBottom === ROWS - 1 - rowIdx;
-                  const opacity = flash ? 0.65 : 1;
-                  const fillClass = block
-                    ? CATEGORY_META[block.correct].fill
-                    : isActive
-                      ? CATEGORY_META[currentCategory].fill
-                      : '';
-                  const border =
-                    flash && current && col === activeCol
-                      ? flash.kind === 'correct'
-                        ? 'border-green-300/60'
-                        : 'border-red-300/60'
-                      : 'border-transparent';
-                  return (
-                    <div
-                      // eslint-disable-next-line react/no-array-index-key
-                      key={rowIdx}
-                      className={`w-full h-[22px] ${block ? '' : ''} flex items-center justify-center transition-all`}
-                    >
-                      {block && (
-                        <div
-                          className={`w-[14px] h-[14px] rounded-sm border border-white/15 ${fillClass}`}
-                          title={`${block.name} • ₹${block.amount.toLocaleString('en-IN')}`}
-                          style={{ opacity }}
-                        />
-                      )}
-                      {isActive && (
-                        <div
-                          className={`w-[14px] h-[14px] rounded-sm border border-white/15 ${fillClass}`}
-                          title={`${current?.name ?? ''} • ₹${current?.amount.toLocaleString('en-IN') ?? ''}`}
-                          style={{ opacity }}
-                        />
-                      )}
-                      <div className={`absolute inset-0 border ${border} pointer-events-none`} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Column headers */}
-        <div className="absolute -top-6 left-0 right-0 flex">
-          {[0, 1, 2].map((i) => {
-            const cat = i === 0 ? 'needs' : i === 1 ? 'wants' : 'savings';
-            const meta = CATEGORY_META[cat as Category];
-            return (
-              <div key={i} className={`w-1/3 text-center font-pixel text-[10px] ${meta.color}`}>
-                {meta.label}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
+  // ── Render ────────────────────────────────────────────────────────────────
+  const pct = (cat: Category) => Math.min(100, Math.round((used[cat] / targets[cat]) * 100));
 
   return (
-    <div
-      className="fixed inset-0 bg-black/85 flex items-center justify-center z-[250] p-4"
-      onClick={() => {
-        stop();
-        onClose();
-      }}
-    >
-      <div
-        className="bg-[var(--dark2)] border-2 border-[var(--panel-border)] rounded-lg w-full max-w-[860px] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex justify-between items-center p-4 border-b border-[var(--panel-border)]">
-          <span className="font-pixel text-gold text-xs">🧱 Budget Tetris — Expense Pressure!</span>
-          <button
-            onClick={() => {
-              stop();
-              onClose();
-            }}
-            className="text-[var(--text-muted)] hover:text-red-500 text-xl"
-            type="button"
-          >
-            ✕
-          </button>
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[250] p-2"
+      onClick={() => { runningRef.current = false; onClose(); }}>
+      <div className="bg-[#0d1117] border-2 border-[rgba(255,215,0,0.3)] rounded-xl w-full max-w-[780px] overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex justify-between items-center px-4 py-3 border-b border-white/10">
+          <span className="font-pixel text-gold text-xs">🧱 Budget Tetris — Sort your expenses!</span>
+          <button onClick={() => { runningRef.current = false; onClose(); }}
+            className="text-[var(--text-muted)] hover:text-red-400 text-xl">✕</button>
         </div>
 
-        <div className="p-4 space-y-4">
-          {/* Budget progress */}
-          <div className="space-y-2 bg-black/25 border border-white/10 rounded-lg p-3">
-            <CategoryProgressBar cat="needs" />
-            <CategoryProgressBar cat="wants" />
-            <CategoryProgressBar cat="savings" />
+        <div className="flex gap-3 p-3">
+          {/* Canvas */}
+          <div className="relative flex-shrink-0">
+            <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H}
+              className="block rounded border border-white/10" />
+            {!started && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded">
+                <div className="font-pixel text-gold text-sm mb-2">BUDGET TETRIS</div>
+                <div className="text-xs text-[var(--text-muted)] text-center mb-4 px-4 leading-relaxed">
+                  Sort falling expense blocks into the correct zone.<br />
+                  <span className="text-red-400">NEEDS</span> · <span className="text-blue-400">WANTS</span> · <span className="text-green-400">SAVINGS</span>
+                </div>
+                <button onClick={startGame}
+                  className="font-pixel text-xs bg-gold text-[#0d1117] px-6 py-2 rounded hover:-translate-y-0.5 transition">
+                  ▶ START
+                </button>
+              </div>
+            )}
+            {gameOver && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 rounded">
+                <div className="font-pixel text-gold text-sm mb-1">GAME OVER</div>
+                <div className="font-pixel text-xs text-white mb-1">Score: {score}</div>
+                <div className="font-pixel text-xs text-green-400 mb-3">{correct}/{total} correct</div>
+                <button onClick={startGame}
+                  className="font-pixel text-xs bg-gold text-[#0d1117] px-5 py-2 rounded hover:-translate-y-0.5 transition">
+                  ▶ PLAY AGAIN
+                </button>
+              </div>
+            )}
+            {/* Feedback toast */}
+            {feedback && (
+              <div className={`absolute top-2 left-1/2 -translate-x-1/2 font-pixel text-[10px] px-3 py-1.5 rounded shadow-lg whitespace-nowrap z-10 ${feedback.ok ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                {feedback.text}
+              </div>
+            )}
           </div>
 
-          {renderBoard()}
+          {/* Side panel */}
+          <div className="flex-1 flex flex-col gap-3 min-w-0">
+            {/* Current expense */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+              <div className="font-pixel text-[9px] text-[var(--text-muted)] mb-2">CURRENT BLOCK</div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-2xl">{currentExp.icon}</span>
+                <div>
+                  <div className="font-pixel text-[10px] text-white">{currentExp.name}</div>
+                  <div className="font-pixel text-[9px] text-gold">₹{currentExp.amount.toLocaleString('en-IN')}</div>
+                </div>
+              </div>
+              <div className={`font-pixel text-[9px] px-2 py-0.5 rounded inline-block`}
+                style={{ background: ZONE_COLORS[currentExp.category] + '33', color: ZONE_COLORS[currentExp.category] }}>
+                → {ZONE_LABELS[currentExp.category]}
+              </div>
+            </div>
 
-          {/* Info + controls */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-between">
-            <div className="flex-1 bg-white/5 border border-white/10 rounded-lg p-3">
-              <div className="font-pixel text-[10px] text-[var(--text-muted)] mb-1">NEXT BLOCK</div>
+            {/* Next expense */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+              <div className="font-pixel text-[9px] text-[var(--text-muted)] mb-2">NEXT</div>
               <div className="flex items-center gap-2">
-                <div className="text-2xl">{current?.icon ?? '🧩'}</div>
-                <div className="min-w-0">
-                  <div className="font-pixel text-[9px] text-[var(--text)] leading-tight truncate">
-                    {current?.name ?? 'Press START'}
-                  </div>
-                  <div className="font-pixel text-[9px] text-gold">
-                    {current ? `₹${current.amount.toLocaleString('en-IN')}` : '—'}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-2 flex gap-3">
-                <div className="font-pixel text-[9px] text-[var(--text-muted)]">SCORE</div>
-                <div className="font-pixel text-[12px] text-gold">{score.toLocaleString('en-IN')}</div>
-              </div>
-              <div className="mt-2 font-pixel text-[9px] text-[var(--text-muted)]">
-                SKIP [S]: {Math.max(0, 2 - consecutiveSkips)} remaining
-              </div>
-            </div>
-
-            <div className="flex-1 bg-white/5 border border-white/10 rounded-lg p-3">
-              <div className="font-pixel text-[10px] text-[var(--text-muted)] mb-2">CONTROLS</div>
-              <div className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                <span className="font-pixel text-[10px] text-gold">← →</span> Move column ·{' '}
-                <span className="font-pixel text-[10px] text-gold">↓/SPACE</span> Drop ·{' '}
-                <span className="font-pixel text-[10px] text-gold">S</span> Skip (2×)
-              </div>
-
-              <div className="mt-3 flex gap-2 flex-wrap">
-                {!running && (
-                  <button
-                    onClick={start}
-                    type="button"
-                    className="font-pixel text-xs bg-green-600 text-white px-5 py-2 rounded hover:bg-green-500 transition"
-                  >
-                    ▶ START
-                  </button>
-                )}
-                {running && (
-                  <button
-                    onClick={() => {
-                      stop();
-                      onClose();
-                    }}
-                    type="button"
-                    className="font-pixel text-xs bg-red-500/25 text-red-200 border border-red-500/40 px-4 py-2 rounded hover:bg-red-500/30 transition"
-                  >
-                    ✕ EXIT
-                  </button>
-                )}
-                <div className="hidden sm:block ml-auto font-pixel text-[9px] text-[var(--text-muted)]">
-                  {Math.max(0, ROWS - (stacks[activeCol]?.length ?? 0))} spaces left in column
-                </div>
-              </div>
-
-              <div className="sm:hidden mt-4">
-                <div className="flex flex-wrap gap-2 justify-center">
-                  <button
-                    type="button"
-                    onClick={() => handleMove(-1)}
-                    className="w-12 h-12 bg-white/10 border border-white/30 rounded font-pixel text-[10px] text-white/90 hover:bg-white/15"
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDrop()}
-                    className="w-12 h-12 bg-white/10 border border-white/30 rounded font-pixel text-[10px] text-white/90 hover:bg-white/15"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleMove(1)}
-                    className="w-12 h-12 bg-white/10 border border-white/30 rounded font-pixel text-[10px] text-white/90 hover:bg-white/15"
-                  >
-                    →
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSkip}
-                    disabled={consecutiveSkips >= 2}
-                    className="w-12 h-12 bg-white/10 border border-white/30 rounded font-pixel text-[10px] text-white/90 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/15"
-                  >
-                    SKIP
-                  </button>
+                <span className="text-xl">{nextExp.icon}</span>
+                <div>
+                  <div className="font-pixel text-[9px] text-white">{nextExp.name}</div>
+                  <div className="font-pixel text-[9px] text-gold">₹{nextExp.amount.toLocaleString('en-IN')}</div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="text-xs text-[var(--text-muted)] font-pixel">
-            Blocks fall automatically. Correct placements help you keep your budget balanced.
+            {/* Stats */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-1">
+              <div className="flex justify-between font-pixel text-[9px]">
+                <span className="text-[var(--text-muted)]">SCORE</span><span className="text-gold">{score}</span>
+              </div>
+              <div className="flex justify-between font-pixel text-[9px]">
+                <span className="text-[var(--text-muted)]">LINES</span><span className="text-white">{lines}</span>
+              </div>
+              <div className="flex justify-between font-pixel text-[9px]">
+                <span className="text-[var(--text-muted)]">LEVEL</span><span className="text-white">{level}</span>
+              </div>
+              <div className="flex justify-between font-pixel text-[9px]">
+                <span className="text-[var(--text-muted)]">CORRECT</span>
+                <span className="text-green-400">{correct}/{total}</span>
+              </div>
+            </div>
+
+            {/* Budget progress */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-2">
+              <div className="font-pixel text-[9px] text-[var(--text-muted)] mb-1">50/30/20 BUDGET</div>
+              {(['needs', 'wants', 'savings'] as Category[]).map((cat) => (
+                <div key={cat}>
+                  <div className="flex justify-between font-pixel text-[8px] mb-0.5">
+                    <span style={{ color: ZONE_COLORS[cat] }}>{ZONE_LABELS[cat]}</span>
+                    <span className="text-[var(--text-muted)]">₹{used[cat].toLocaleString('en-IN')} / ₹{targets[cat].toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="h-1.5 bg-black/40 rounded overflow-hidden">
+                    <div className="h-full rounded transition-all" style={{ width: `${pct(cat)}%`, background: ZONE_COLORS[cat] }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Controls */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+              <div className="font-pixel text-[9px] text-[var(--text-muted)] mb-2">CONTROLS</div>
+              <div className="space-y-0.5 font-pixel text-[8px] text-[var(--text-muted)]">
+                <div><span className="text-gold">← →</span> Move</div>
+                <div><span className="text-gold">↑</span> Rotate</div>
+                <div><span className="text-gold">↓</span> Soft drop</div>
+                <div><span className="text-gold">SPACE</span> Hard drop</div>
+              </div>
+              {/* Mobile buttons */}
+              <div className="mt-3 grid grid-cols-4 gap-1 sm:hidden">
+                {[['←', -1, 0], ['↑', 0, 0], ['→', 1, 0], ['↓', 0, 1]].map(([label, dc, dr]) => (
+                  <button key={label as string}
+                    onTouchStart={(e) => { e.preventDefault(); if (label === '↑') tryRotate(); else if (label === '↓') { if (!tryMove(1, 0)) lockPiece(); } else tryMove(0, dc as number); }}
+                    className="h-9 bg-white/10 border border-white/20 rounded font-pixel text-[10px] text-white">
+                    {label as string}
+                  </button>
+                ))}
+              </div>
+              <button
+                onTouchStart={(e) => { e.preventDefault(); hardDrop(); }}
+                className="mt-1 w-full h-8 bg-gold/20 border border-gold/40 rounded font-pixel text-[9px] text-gold sm:hidden">
+                SPACE (drop)
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
