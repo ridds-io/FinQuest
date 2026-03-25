@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
+
 
 type Category = 'needs' | 'wants' | 'savings';
 
@@ -38,11 +40,11 @@ const CATEGORY_TO_INDEX: Record<Category, number> = {
 
 const CATEGORY_META: Record<
   Category,
-  { fill: string; progress: string; label: string; dim: string; }
+  { fill: string; progress: string; label: string; dim: string; color: string }
 > = {
-  needs: { fill: 'bg-red-500', progress: 'bg-red-400', label: 'NEEDS', dim: 'bg-red-500/15' },
-  wants: { fill: 'bg-blue-500', progress: 'bg-blue-400', label: 'WANTS', dim: 'bg-blue-500/15' },
-  savings: { fill: 'bg-green-500', progress: 'bg-green-400', label: 'SAVINGS', dim: 'bg-green-500/15' },
+  needs: { fill: 'bg-red-500', progress: 'bg-red-400', label: 'NEEDS', dim: 'bg-red-500/15', color: 'text-red-400' },
+  wants: { fill: 'bg-blue-500', progress: 'bg-blue-400', label: 'WANTS', dim: 'bg-blue-500/15', color: 'text-blue-400' },
+  savings: { fill: 'bg-green-500', progress: 'bg-green-400', label: 'SAVINGS', dim: 'bg-green-500/15', color: 'text-green-400' },
 };
 
 const ROWS = 12;
