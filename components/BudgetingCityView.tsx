@@ -56,7 +56,7 @@ function loadState(): {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
     if (s) return JSON.parse(s);
-  } catch {}
+  } catch { }
   return {
     avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
     username: 'ADVENTURER',
@@ -73,7 +73,7 @@ function loadState(): {
 function saveState(state: ReturnType<typeof loadState>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
+  } catch { }
 }
 
 export default function BudgetingCityView() {
@@ -312,7 +312,7 @@ export default function BudgetingCityView() {
             <img
               src="/map/budgeting-city.png"
               alt="FinQuest Budgeting City"
-              className="w-full h-full object-cover select-none"
+              className="absolute w-full h-full object-cover select-none z-0"
               draggable={false}
               style={{ imageRendering: 'pixelated' }}
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -325,7 +325,7 @@ export default function BudgetingCityView() {
             </button>
             {/* Hotspots */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
+              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
               style={{ left: '48%', top: '20%', width: '15%', height: '20%' }}
               onClick={() => openDorms()}
             >
@@ -333,7 +333,7 @@ export default function BudgetingCityView() {
             </div>
             {/* MARKET */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
+              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
               style={{ left: '8%', top: '30%', width: '22%', height: '22%' }}
               onClick={() => setModal('market')}
             >
@@ -341,23 +341,23 @@ export default function BudgetingCityView() {
             </div>
             {/* CAFE */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
+              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
               style={{ left: '55%', top: '42%', width: '18%', height: '22%' }}
               onClick={() => openCafe()}
             >
               <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">UNIV. CAFÉ</span>
             </div>
-            {/* CITY HALL */}
+            {/* ASSESSMENT (CITY HALL) */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
+              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
               style={{ left: '55%', top: '5%', width: '18%', height: '18%' }}
               onClick={() => openQuiz()}
             >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">CITY HALL</span>
+              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">ASSESSMENT</span>
             </div>
             {/* BUDGET TETRIS */}
             <div
-              className="absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
+              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
               style={{ left: '25%', top: '55%', width: '15%', height: '18%' }}
               onClick={() => setModal('tetris')}
             >
@@ -624,9 +624,8 @@ export default function BudgetingCityView() {
             {tutorMessages.map((m, i) => (
               <div
                 key={i}
-                className={`p-3 rounded text-sm ${
-                  m.role === 'user' ? 'bg-green/10 border border-green/20 ml-6' : 'bg-blue-500/15 border border-blue-500/25'
-                }`}
+                className={`p-3 rounded text-sm ${m.role === 'user' ? 'bg-green/10 border border-green/20 ml-6' : 'bg-blue-500/15 border border-blue-500/25'
+                  }`}
               >
                 <div className="font-pixel text-xs mb-1 opacity-70">{m.role === 'user' ? 'You' : 'AI Tutor'}</div>
                 {m.content}
