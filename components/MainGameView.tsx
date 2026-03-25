@@ -156,7 +156,7 @@ export default function MainGameView() {
   const [dormOutcome, setDormOutcome] = useState<{ title: string; text: string; xp: number; gold: number } | null>(null);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<Array<{ role: string; content: string }>>([
-    { role: 'ai', content: "Namaste! I'm your Socratic financial guide, Aryan. What financial situation are you navigating today?" },
+    { role: 'ai', content: "Namaste! I'm your Socratic financial guide, Penny. What financial situation are you navigating today?" },
   ]);
   const [tutorInput, setTutorInput] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
@@ -657,7 +657,7 @@ export default function MainGameView() {
                 className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 pointer-events-auto hover:shadow-none hover:translate-y-[4px] transition-all"
               >
                 <span>🐱</span>
-                <span className="font-pixel text-[9px] text-green-400">ARYAN</span>
+                <span className="font-pixel text-[9px] text-green-400">PENNY</span>
               </button>
             </div>
 
@@ -894,7 +894,7 @@ export default function MainGameView() {
               <div className="w-8 h-8 bg-[#0a1a2e] border border-gold/40 rounded-full overflow-hidden flex items-center justify-center">
                 <img
                   src="/cat.png"
-                  alt="Aryan"
+                  alt="Penny"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
@@ -904,7 +904,7 @@ export default function MainGameView() {
                 <span className="text-lg hidden">🐱</span>
               </div>
               <div>
-                <div className="font-pixel text-[var(--blue-light)] text-xs">Aryan</div>
+                <div className="font-pixel text-[var(--blue-light)] text-xs">Penny</div>
                 <div className="text-xs text-[var(--text-muted)]">Finance Cat · RAG + Groq</div>
               </div>
             </div>
