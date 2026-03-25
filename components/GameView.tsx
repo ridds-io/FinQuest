@@ -503,6 +503,9 @@ export default function GameView() {
   // ── GAME SCREEN ────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 flex flex-col bg-[#16213e] overflow-hidden">
+      {/* ── Aryan Intro (Shows Once) ── */}
+      {showAryanIntro && <AryanIntro onClose={() => setShowAryanIntro(false)} />}
+
       <div className="flex-1 flex min-h-0">
         <QuestSidebar
           entries={sidebarEntries}
@@ -601,7 +604,7 @@ export default function GameView() {
             {/* Title — top center */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
               <div
-                className="font-pixel text-2xl text-white"
+                className="font-pixel text-3xl sm:text-4xl text-white"
                 style={{
                   textShadow:
                     '3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',
@@ -774,6 +777,30 @@ export default function GameView() {
           Back button returns to budgeting city submap
       ══════════════════════════════════════════════════════════════════════ */}
 
+      {/* Active Top-Level Games (Cafe, Quiz) */}
+      {activeGame === 'cafe' && (
+        <CafeGame
+          onClose={() => setActiveGame(null)}
+          onComplete={(xpEarned) => {
+            setState((s) => ({ ...s, xp: s.xp + xpEarned }));
+            showToast(`+${xpEarned} XP earned in the Café! ☕`);
+          }}
+        />
+      )}
+      {activeGame === 'quiz' && (
+        <QuizGame
+          onClose={() => setActiveGame(null)}
+          onComplete={(res) => {
+            setState((s) => ({
+              ...s,
+              xp: s.xp + res.xpEarned,
+              gold: s.gold + res.goldEarned,
+            }));
+            showToast(`+${res.xpEarned} XP, +₹${res.goldEarned} earned in Quiz! 🧠`);
+          }}
+        />
+      )}
+
       {/* Modal: Dorms (AI scenario) */}
       {modal === 'dorms' && (
         <div
@@ -869,6 +896,24 @@ export default function GameView() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: BudgetGame (Market) */}
+      {modal === 'market' && (
+        <BudgetGame
+          onClose={() => setModal('budgeting-city')}
+          onComplete={(score, xpEarned, goldEarned) => {
+            setState((s) => ({
+              ...s,
+              xp: s.xp + xpEarned,
+              gold: s.gold + goldEarned,
+              budgetProgress: Math.min(100, s.budgetProgress + 34),
+            }));
+            showToast(`+${xpEarned} XP, +₹${goldEarned} earned in the Market! 🛒`);
+            markQuestStep('q-budget-basics', 1);
+            setModal('budgeting-city');
+          }}
+        />
       )}
 
       {/* Modal: Budget Tetris */}

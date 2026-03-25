@@ -414,34 +414,40 @@ export default function MainGameView() {
         <main className="flex-1 relative min-h-[500px] bg-[#2d5a2d] overflow-hidden">
           <div className="relative w-full h-full">
             <img
-              src="/assets/background.jpg"
+              src="/map/world-map.png"
               alt="FinQuest World Map"
-              className="absolute w-full h-full object-cover select-none z-0"
+              className="w-full h-full object-cover select-none"
               draggable={false}
               style={{ imageRendering: 'pixelated' }}
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-            {/* Clickable hotspots with building images */}
+            {/* Clickable hotspots with building names */}
             <div
-              className="absolute cursor-pointer hover:-translate-y-1 transition-transform duration-300 z-10 flex items-end justify-center mix-blend-multiply"
+              className="absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 border-transparent hover:border-yellow-400/40 transition-all duration-200 flex items-end justify-center pb-2"
               style={{ left: '12%', top: '42%', width: '20%', height: '28%' }}
               onClick={openBudgetingCity}
             >
-              <img src="/assets/budgeting.png" alt="Budgeting City" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              <span className="font-pixel text-[9px] text-white bg-black/60 px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
+                Budgeting City
+              </span>
             </div>
             <div
-              className="absolute cursor-pointer hover:-translate-y-1 transition-transform duration-300 z-10 opacity-60 mix-blend-multiply"
+              className="absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl border-2 border-transparent hover:border-yellow-400/20 transition-all duration-200 opacity-60"
               style={{ left: '55%', top: '8%', width: '22%', height: '35%' }}
               onClick={() => showToast('🔒 Complete Budgeting City to unlock Investment Tower!')}
             >
-              <img src="/assets/mainasset.jpg" alt="Investment Tower" className="w-full h-full object-contain mix-blend-darken" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             </div>
             <div
-              className="absolute cursor-pointer hover:-translate-y-1 transition-transform duration-300 z-10 mix-blend-multiply"
+              className="absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 border-transparent hover:border-yellow-400/40 transition-all duration-200"
               style={{ left: '35%', top: '28%', width: '18%', height: '22%' }}
               onClick={openQuiz}
             >
-               <img src="/assets/budgetasset.png" alt="City Hall" className="w-full h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            </div>
+            <div
+              className="absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl opacity-60"
+              style={{ left: '60%', top: '55%', width: '20%', height: '28%' }}
+              onClick={() => showToast('🔒 Complete Budgeting City to unlock Loan Bank!')}
+            >
             </div>
           </div>
 
