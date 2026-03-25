@@ -56,11 +56,11 @@ function loadState(): {
       avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
       username: 'ADVENTURER',
       financialProfile: {          // ADD THIS
-      monthlyIncome: 15000,
-      incomeLabel: '₹10,000-15,000',
-      livingSituation: 'PG/Hostel',
-      primaryGoal: 'General Literacy',
-      riskTolerance: 'Moderate',
+        monthlyIncome: 15000,
+        incomeLabel: '₹10,000-15,000',
+        livingSituation: 'PG/Hostel',
+        primaryGoal: 'General Literacy',
+        riskTolerance: 'Moderate',
       },
       gold: 15000,
       gems: 50,
@@ -126,6 +126,7 @@ export default function BudgetingCityView() {
   ]);
   const [tutorInput, setTutorInput] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
+  const [tutorTips, setTutorTips] = useState<string[]>([]);
   const hotbarActive = useRef(0);
 
   const persist = useCallback(() => {
@@ -143,6 +144,12 @@ export default function BudgetingCityView() {
 
   const addTutorToSidebar = useCallback((text: string) => {
     setSidebarEntries((prev) => [...prev, makeTutorEntry(text)]);
+  }, []);
+
+  const extractTip = useCallback((text: string): string => {
+    const first = text.split(/[.!?]/).map((s) => s.trim()).filter(Boolean)[0] ?? text.trim();
+    const compact = first.length > 90 ? `${first.slice(0, 87)}...` : first;
+    return compact.length >= 15 ? compact : '';
   }, []);
 
   const markQuestStep = useCallback((questId: string, stepIndex: number) => {
@@ -290,9 +297,11 @@ export default function BudgetingCityView() {
         }),
       });
       const data = await res.json();
-      const reply = data.question || 'I couldn’t connect. Try again!';
+      const reply = data.question || "I couldn't connect. Try again!";
       setTutorMessages((m) => [...m, { role: 'ai', content: reply }]);
       addTutorToSidebar(reply);
+      const tip = extractTip(reply);
+      if (tip) setTutorTips((prev) => [...prev.slice(-9), tip]);
       markQuestStep('q-budget-basics', 2);
       markQuestStep('q-roommate', 2);
     } catch {
@@ -315,7 +324,7 @@ export default function BudgetingCityView() {
       <div className="flex-1 flex min-h-0">
         <QuestSidebar
           entries={sidebarEntries}
-          tutorTips={[]}
+          tutorTips={tutorTips}
           questsDone={sidebarEntries.filter(
             (e) => e.kind === 'quest' && e.steps.every((s) => s.done),
           ).length}
