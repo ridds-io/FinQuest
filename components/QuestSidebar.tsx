@@ -60,6 +60,45 @@ export function makeTutorEntry(text: string): SidebarEntry {
   };
 }
 
+// ── Quest persistence helpers ──────────────────────────────────────────────
+const QUEST_STEPS_KEY = 'finquest_quest_steps';
+
+export function loadQuestSteps(): Record<string, number[]> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(QUEST_STEPS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export function saveQuestSteps(entries: SidebarEntry[]) {
+  try {
+    const record: Record<string, number[]> = {};
+    for (const e of entries) {
+      if (e.kind !== 'quest') continue;
+      record[e.id] = e.steps
+        .map((s, i) => (s.done ? i : -1))
+        .filter((i) => i >= 0);
+    }
+    localStorage.setItem(QUEST_STEPS_KEY, JSON.stringify(record));
+  } catch { }
+}
+
+export function applyQuestSteps(
+  entries: SidebarEntry[],
+  saved: Record<string, number[]>,
+): SidebarEntry[] {
+  return entries.map((e) => {
+    if (e.kind !== 'quest') return e;
+    const doneIndices = saved[e.id] ?? [];
+    if (doneIndices.length === 0) return e;
+    return {
+      ...e,
+      steps: e.steps.map((s, i) => ({ ...s, done: doneIndices.includes(i) })),
+    };
+  });
+}
+
 type QuestSidebarProps = {
   entries: SidebarEntry[];
   tutorTips: string[];
@@ -109,11 +148,10 @@ export function QuestSidebar({ entries, tutorTips, questsDone, onAskTutor }: Que
               return (
                 <div
                   key={q.id}
-                  className={`rounded-md border px-2.5 py-2 transition-all ${
-                    completed
+                  className={`rounded-md border px-2.5 py-2 transition-all ${completed
                       ? 'border-green-500/40 bg-green-500/8'
                       : 'border-yellow-500/25 bg-yellow-500/5'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <span className={`font-pixel text-[9px] leading-tight ${completed ? 'text-green-400' : 'text-yellow-300'}`}>

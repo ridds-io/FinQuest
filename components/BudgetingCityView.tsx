@@ -8,6 +8,9 @@ import {
   QUEST_DEFINITIONS,
   INITIAL_TIPS,
   makeTutorEntry,
+  loadQuestSteps,
+  saveQuestSteps,
+  applyQuestSteps,
   type SidebarEntry,
 } from '@/components/QuestSidebar';
 import {
@@ -51,10 +54,9 @@ export default function BudgetingCityView() {
   const router = useRouter();
   const supabase = useSupabase();
   const [state, setState] = useState<GameState>(loadState);
-  const [sidebarEntries, setSidebarEntries] = useState<SidebarEntry[]>([
-    ...QUEST_DEFINITIONS,
-    ...INITIAL_TIPS,
-  ]);
+  const [sidebarEntries, setSidebarEntries] = useState<SidebarEntry[]>(() =>
+    applyQuestSteps([...QUEST_DEFINITIONS, ...INITIAL_TIPS], loadQuestSteps())
+  );
   const [toast, setToast] = useState('');
   const [modal, setModal] = useState<string | null>(null);
   const [activeGame, setActiveGame] = useState<null | 'cafe' | 'quiz'>(null);
@@ -77,6 +79,8 @@ export default function BudgetingCityView() {
   useEffect(() => {
     persist();
   }, [state, persist]);
+
+  useEffect(() => { saveQuestSteps(sidebarEntries); }, [sidebarEntries]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -392,13 +396,12 @@ export default function BudgetingCityView() {
                           key={i}
                           onClick={() => dormChoice(i)}
                           disabled={selectedChoice !== null}
-                          className={`text-left p-4 rounded border flex justify-between items-center transition-all ${
-                            chosen
-                              ? 'border-green-500 bg-green-500/15'
-                              : unchosen
+                          className={`text-left p-4 rounded border flex justify-between items-center transition-all ${chosen
+                            ? 'border-green-500 bg-green-500/15'
+                            : unchosen
                               ? 'border-white/10 bg-white/3 opacity-50'
                               : 'border-white/15 hover:border-gold bg-white/5'
-                          }`}
+                            }`}
                         >
                           <span className="font-pixel text-gold text-xs">
                             {chosen ? '✓ ' : ''}{choice}

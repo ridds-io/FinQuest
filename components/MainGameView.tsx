@@ -8,6 +8,9 @@ import {
   QUEST_DEFINITIONS,
   INITIAL_TIPS,
   makeTutorEntry,
+  loadQuestSteps,
+  saveQuestSteps,
+  applyQuestSteps,
   type SidebarEntry,
 } from '@/components/QuestSidebar';
 
@@ -162,10 +165,9 @@ export default function MainGameView() {
   const [step1RiskTolerance, setStep1RiskTolerance] = useState<string>(() => {
     try { return loadState().financialProfile.riskTolerance; } catch { return RISK_OPTIONS[0]; }
   });
-  const [sidebarEntries, setSidebarEntries] = useState<SidebarEntry[]>([
-    ...QUEST_DEFINITIONS,
-    ...INITIAL_TIPS,
-  ]);
+  const [sidebarEntries, setSidebarEntries] = useState<SidebarEntry[]>(() =>
+    applyQuestSteps([...QUEST_DEFINITIONS, ...INITIAL_TIPS], loadQuestSteps())
+  );
   const [toast, setToast] = useState('');
   const [modal, setModal] = useState<string | null>(null);
   const [activeGame, setActiveGame] = useState<null | 'cafe' | 'quiz'>(null);
@@ -188,13 +190,8 @@ export default function MainGameView() {
   const [tutorTips, setTutorTips] = useState<string[]>([]);
   const hotbarActive = useRef(0);
 
-  const persist = useCallback(() => {
-    saveState(state);
-  }, [state]);
-
-  useEffect(() => {
-    persist();
-  }, [state, persist]);
+  useEffect(() => { saveState(state); }, [state]);
+  useEffect(() => { saveQuestSteps(sidebarEntries); }, [sidebarEntries]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -729,9 +726,7 @@ export default function MainGameView() {
         <div className="fixed inset-0 z-[200]">
           <div className="relative w-full h-full bg-[#2d5a2d]">
             <img
-              src="/map/budgeting-city.png"
-              className="w-full h-full object-cover select-none"
-              style={{ imageRendering: 'pixelated' }}
+              src="/map/budgeting-city.png?v=2"
               draggable={false}
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
