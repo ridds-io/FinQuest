@@ -330,8 +330,8 @@ export default function BudgetingCityView() {
                 <div>💎 {state.gems ?? 0} tokens</div>
                 <div>📊 {state.budgetProgress ?? 0}% progress</div>
                 <div>✅ {state.questsDone ?? 0} quests</div>
-                <button onClick={handleLogout} className="mt-1 w-full font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-red-400 hover:text-red-300 transition-all">
-                  🚪 Logout
+                <button onClick={() => router.push('/profile?from=budgeting_city')} className="mt-1 w-full font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-gold/50 hover:text-gold transition-all">
+                  👤 Profile
                 </button>
               </div>
             </div>

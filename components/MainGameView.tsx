@@ -686,10 +686,10 @@ export default function MainGameView() {
                 <div>🪙 COINS: {(state.gold ?? 0).toLocaleString('en-IN')}</div>
                 <div>💎 TOKENS: {state.gems ?? 0}</div>
                 <button
-                  onClick={handleLogout}
-                  className="mt-1 w-full font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-red-400 hover:text-red-300 transition-all"
+                  onClick={() => router.push('/profile?from=main_game')}
+                  className="mt-1 w-full font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-gold/50 hover:text-gold transition-all"
                 >
-                  🚪 Logout
+                  � Profile
                 </button>
               </div>
             </div>

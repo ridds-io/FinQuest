@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import {
   QuestSidebar,
   QUEST_DEFINITIONS,
@@ -235,6 +236,7 @@ function PennyIntro({ onClose }: { onClose: () => void }) {
 }
 
 export default function GameView() {
+  const router = useRouter();
   const [screen, setScreen] = useState<'welcome' | 'avatar' | 'game'>('welcome');
   const [state, setState] = useState(loadState);
   const [welcomeUsername, setWelcomeUsername] = useState(() => {
@@ -951,10 +953,10 @@ export default function GameView() {
                 <div>🪙 COINS: {(state.gold ?? 0).toLocaleString('en-IN')}</div>
                 <div>💎 TOKENS: {state.gems}</div>
                 <button
-                  onClick={handleLogout}
-                  className="mt-1 w-full font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-red-400 hover:text-red-300 transition-all"
+                  onClick={() => router.push('/profile?from=game')}
+                  className="mt-1 w-full font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-gold/50 hover:text-gold transition-all"
                 >
-                  🚪 Logout
+                  👤 Profile
                 </button>
               </div>
             </div>
@@ -1003,9 +1005,7 @@ export default function GameView() {
           <div className="relative w-full h-full bg-[#2d5a2d]">
             {/* Background image */}
             <img
-              src="/map/budgeting-city.png"
-              className="w-full h-full object-cover select-none"
-              style={{ imageRendering: 'pixelated' }}
+              src="/map/budgeting-city.png?v=2"
               draggable={false}
               alt="Budgeting City"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}

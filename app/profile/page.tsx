@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { INCOME_OPTIONS, LIVING_OPTIONS, GOAL_OPTIONS, RISK_OPTIONS, STORAGE_KEY as GAME_STORAGE_KEY } from '@/lib/gameState';
 
 const STORAGE_KEY = 'finquest_state';
@@ -124,6 +125,18 @@ function loadState(): GameProfileState {
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get('from');
+
+  const backPath = from === 'budgeting_city'
+    ? '/game/budgeting_city'
+    : from === 'main_game'
+      ? '/game/main_game'
+      : from === 'game'
+        ? '/game'
+        : '/game/main_game';
+
   const [profile, setProfile] = useState<GameProfileState>(() => loadState());
   const [editingProfile, setEditingProfile] = useState(false);
   const [editIncome, setEditIncome] = useState('');
@@ -168,6 +181,14 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0e1a] to-[#0a1a0a] px-4 py-10">
       <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => router.push(backPath)}
+            className="font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text-muted)] px-4 py-2 rounded hover:border-gold/50 hover:text-gold transition-all"
+          >
+            ← Back to {from === 'budgeting_city' ? 'Budgeting City' : from === 'game' ? 'Game' : 'World Map'}
+          </button>
+        </div>
         <div className="flex items-start justify-between gap-6 flex-col sm:flex-row">
           <div className="w-full sm:w-[360px]">
             <div className="bg-[rgba(10,20,40,0.70)] border-2 border-[rgba(255,215,0,0.25)] rounded-lg p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
