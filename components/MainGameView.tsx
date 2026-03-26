@@ -10,20 +10,6 @@ import {
   makeTutorEntry,
   type SidebarEntry,
 } from '@/components/QuestSidebar';
-import {
-  AVATARS,
-  INCOME_OPTIONS,
-  LIVING_OPTIONS,
-  GOAL_OPTIONS,
-  RISK_OPTIONS,
-  loadState,
-  saveState,
-  getXpProgress,
-  checkBadges,
-  type GameState,
-  type FinancialProfile,
-} from '@/lib/gameState';
-import { useSupabase } from '@/components/SupabaseProvider';
 
 const BudgetTetris = dynamic(
   () => import('@/components/BudgetTetris').then((m) => m.BudgetTetris),
@@ -33,16 +19,126 @@ const BudgetGame = dynamic(() => import('@/components/BudgetGame').then((m) => m
 const CafeGame = dynamic(() => import('@/components/CafeGame').then((m) => m.CafeGame), { ssr: false });
 const QuizGame = dynamic(() => import('@/components/QuizGame').then((m) => m.QuizGame), { ssr: false });
 
+const AVATARS = [
+  { emoji: '📚', name: 'Scholarship Grinder', gold: 500, stat: 'HIGH' },
+  { emoji: '🎒', name: 'Loan Leveraged', gold: 2000, stat: '₹12L' },
+  { emoji: '💼', name: 'Hustle Economy', gold: 800, stat: 'HIGH' },
+  { emoji: '💎', name: 'Privilege Stack', gold: 15000, stat: 'LOW' },
+  { emoji: '🌍', name: 'International Wildcard', gold: 3000, stat: 'MAX' },
+];
+
+const STORAGE_KEY = 'finquest_state';
+
+type FinancialProfile = {
+  monthlyIncome: number;
+  incomeLabel: string;
+  livingSituation: string;
+  primaryGoal: string;
+  riskTolerance: string;
+};
+
+const INCOME_OPTIONS: Array<{ label: string; monthlyIncome: number }> = [
+  { label: 'Under ₹5,000', monthlyIncome: 2500 },
+  { label: '₹5,000-10,000', monthlyIncome: 7500 },
+  { label: '₹10,000-15,000', monthlyIncome: 12500 },
+  { label: '₹15,000-20,000', monthlyIncome: 17500 },
+  { label: 'Above ₹20,000', monthlyIncome: 25000 },
+];
+
+const LIVING_OPTIONS = ['Living at Home', 'PG/Hostel', 'Rented Flat', 'College Dorms'] as const;
+const GOAL_OPTIONS = ['Learn to Save', 'Manage Debt', 'Start Investing', 'General Literacy'] as const;
+const RISK_OPTIONS = ['Conservative', 'Moderate', 'Aggressive'] as const;
+
+function loadState(): {
+  avatar: { emoji: string; name: string; type: string };
+  username: string;
+  financialProfile: FinancialProfile;
+  gold: number;
+  gems: number;
+  level: number;
+  xp: number;
+  hp: number;
+  questsDone: number;
+  budgetProgress: number;
+} {
+  if (typeof window === 'undefined')
+    return {
+      avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
+      username: 'ADVENTURER',
+      financialProfile: {
+        monthlyIncome: 15000,
+        incomeLabel: '₹10,000-15,000',
+        livingSituation: 'PG/Hostel',
+        primaryGoal: 'General Literacy',
+        riskTolerance: 'Moderate',
+      },
+      gold: 15000,
+      gems: 50,
+      level: 1,
+      xp: 25,
+      hp: 80,
+      questsDone: 0,
+      budgetProgress: 0,
+    };
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) {
+      const parsed = JSON.parse(s);
+      const defaults = {
+        avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
+        username: 'ADVENTURER',
+        financialProfile: { monthlyIncome: 15000, incomeLabel: '₹10,000-15,000', livingSituation: 'PG/Hostel', primaryGoal: 'General Literacy', riskTolerance: 'Moderate' },
+        gold: 15000, gems: 50, level: 1, xp: 25, hp: 80, questsDone: 0, budgetProgress: 0,
+      };
+      return {
+        ...defaults,
+        ...parsed,
+        gold: Number(parsed.gold) || defaults.gold,
+        gems: Number(parsed.gems) || defaults.gems,
+        level: Number(parsed.level) || defaults.level,
+        xp: Number(parsed.xp) || defaults.xp,
+        hp: Number(parsed.hp) || defaults.hp,
+        questsDone: Number(parsed.questsDone) || 0,
+        budgetProgress: Number(parsed.budgetProgress) || 0,
+        financialProfile: { ...defaults.financialProfile, ...(parsed.financialProfile ?? {}) },
+      };
+    }
+  } catch {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { }
+  }
+  username: 'ADVENTURER',
+    financialProfile: {
+    monthlyIncome: 15000,
+      incomeLabel: '₹10,000-15,000',
+        livingSituation: 'PG/Hostel',
+          primaryGoal: 'General Literacy',
+            riskTolerance: 'Moderate',
+    },
+  gold: 15000,
+    gems: 50,
+      level: 1,
+        xp: 25,
+          hp: 80,
+            questsDone: 0,
+              budgetProgress: 0,
+  };
+}
+
+function saveState(state: ReturnType<typeof loadState>) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch { }
+}
+
 export default function MainGameView() {
   const router = useRouter();
-  const supabase = useSupabase();
   const [screen, setScreen] = useState<'welcome' | 'avatar' | 'game'>(() => {
     if (typeof window !== 'undefined' && sessionStorage.getItem('finquest_intro_done') === 'true') {
       return 'game';
     }
     return 'welcome';
   });
-  const [state, setState] = useState<GameState>(loadState);
+  const [state, setState] = useState(loadState);
   const [welcomeUsername, setWelcomeUsername] = useState(() => {
     try {
       const s = loadState();
@@ -80,7 +176,6 @@ export default function MainGameView() {
   } | null>(null);
   const [dormOutcome, setDormOutcome] = useState<{ title: string; text: string; xp: number; gold: number } | null>(null);
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
-  const [fetchingDorm, setFetchingDorm] = useState(false);
   const [tutorOpen, setTutorOpen] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<Array<{ role: string; content: string }>>([
     { role: 'ai', content: "Namaste! I'm your Socratic financial guide, Penny. What financial situation are you navigating today?" },
@@ -159,13 +254,16 @@ export default function MainGameView() {
   };
 
   const handleLogout = async () => {
-    if (supabase) await supabase.auth.signOut();
-    router.push('/login');
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
   const fetchDormScenario = async () => {
-    if (fetchingDorm) return; // in-flight guard
-    setFetchingDorm(true);
     const fallback = {
       situation: "Your roommate says they'll pay their share of the ₹10,000 PG rent next week via UPI. What do you do?",
       choices: [
@@ -207,15 +305,12 @@ export default function MainGameView() {
       }
     } catch {
       setDormScenario(fallback);
-    } finally {
-      setFetchingDorm(false);
     }
   };
 
   const openDorms = () => {
     setDormOutcome(null);
     setSelectedChoice(null);
-    setDormScenario(null);
     fetchDormScenario();
     setModal('dorms');
   };
@@ -240,20 +335,13 @@ export default function MainGameView() {
     const out = dormScenario.outcomes[i] ?? {};
     const xp = out.xp ?? 0;
     const gold = (out.gold ?? 0) - cost;
-    setState((s) => {
-      const newTotalXp = (s.totalXp ?? s.xp) + xp;
-      const updated: GameState = {
-        ...s,
-        gold: Math.max(0, s.gold + gold),
-        xp: s.xp + xp,
-        totalXp: newTotalXp,
-        questsDone: s.questsDone + 1,
-        dilemmasCompleted: (s.dilemmasCompleted ?? 0) + 1,
-        budgetProgress: Math.min(100, s.budgetProgress + 33),
-      };
-      updated.earnedBadges = checkBadges(updated);
-      return updated;
-    });
+    setState((s) => ({
+      ...s,
+      gold: Math.max(0, s.gold + gold),
+      xp: s.xp + xp,
+      questsDone: s.questsDone + 1,
+      budgetProgress: Math.min(100, s.budgetProgress + 33),
+    }));
     setDormOutcome({
       title: `Option ${String.fromCharCode(65 + i)}`,
       text: dormScenario.explanations?.[i] ?? out.lesson ?? 'Consider asking the AI Tutor for more details!',
@@ -299,12 +387,6 @@ export default function MainGameView() {
       if (tip) setTutorTips((prev) => [...prev.slice(-9), tip]);
       markQuestStep('q-budget-basics', 2);
       markQuestStep('q-roommate', 2);
-      setState((s) => {
-        const updated: GameState = { ...s, tutorQuestions: (s.tutorQuestions ?? 0) + 1 };
-        updated.earnedBadges = checkBadges(updated);
-        saveState(updated);
-        return updated;
-      });
     } catch {
       setTutorMessages((m) => [
         ...m,
@@ -508,8 +590,8 @@ export default function MainGameView() {
           }}
         />
 
-        <main className="flex-1 relative overflow-hidden bg-[#2d5a2d]">
-          <div className="absolute inset-0">
+        <main className="flex-1 relative min-h-[500px] bg-[#2d5a2d] overflow-hidden">
+          <div className="relative w-full h-full">
             <img
               src="/map/world-map.png"
               alt="FinQuest World Map"
@@ -522,28 +604,28 @@ export default function MainGameView() {
             {/* Budgeting City */}
             <div
               className="absolute cursor-pointer rounded border border-transparent hover:border-yellow-400/40 hover:bg-yellow-400/15 transition-all duration-200 flex items-center justify-center mix-blend-screen"
-              style={{ left: '20.05%', top: '25.75%', width: '27%', height: '11%' }}
+              style={{ left: '26.8%', top: '23.5%', width: '13.5%', height: '5.5%' }}
               onClick={openBudgetingCity}
               title="Budgeting City"
             />
             {/* Investment Tower */}
             <div
               className="absolute cursor-pointer rounded border border-transparent hover:border-yellow-400/20 hover:bg-yellow-400/10 transition-all duration-200 mix-blend-screen"
-              style={{ left: '54.95%', top: '25.75%', width: '31%', height: '11%' }}
+              style={{ left: '62.7%', top: '23.5%', width: '15.5%', height: '5.5%' }}
               onClick={() => showToast('🔒 Complete Budgeting City to unlock Investment Tower!')}
               title="Investment Tower (Locked)"
             />
             {/* Central Plaza */}
             <div
               className="absolute cursor-pointer rounded border border-transparent hover:border-yellow-400/40 hover:bg-yellow-400/15 transition-all duration-200 mix-blend-screen"
-              style={{ left: '42.85%', top: '42.55%', width: '29%', height: '9%' }}
+              style={{ left: '50.1%', top: '39.8%', width: '14.5%', height: '4.5%' }}
               onClick={openQuiz}
               title="Central Plaza"
             />
             {/* Loan Bank */}
             <div
               className="absolute cursor-pointer rounded border border-transparent hover:border-yellow-400/20 hover:bg-yellow-400/10 transition-all duration-200 mix-blend-screen"
-              style={{ left: '62.25%', top: '66.5%', width: '27%', height: '10%' }}
+              style={{ left: '69%', top: '64%', width: '13.5%', height: '5%' }}
               onClick={() => showToast('🔒 Complete Budgeting City to unlock Loan Bank!')}
               title="Loan Bank (Locked)"
             />
@@ -569,13 +651,13 @@ export default function MainGameView() {
                     })}
                   </div>
                   <div className="flex gap-1">
-                    {(() => {
-                      const { pct } = getXpProgress(state.totalXp ?? state.xp);
-                      return Array.from({ length: 10 }).map((_, i) => (
+                    {Array.from({ length: 10 }).map((_, i) => {
+                      const filled = ((state.xp % 100) / 10) > i;
+                      return (
                         // eslint-disable-next-line react/no-array-index-key
-                        <span key={i}>{(pct / 10) > i ? '💎' : '◇'}</span>
-                      ));
-                    })()}
+                        <span key={i}>{filled ? '💎' : '◇'}</span>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -595,8 +677,8 @@ export default function MainGameView() {
 
             <div className="absolute top-4 right-4 z-20 pointer-events-none">
               <div className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-pixel text-[9px] text-[#FFD700] uppercase space-y-1 pointer-events-auto">
-                <div>🪙 COINS: {state.gold.toLocaleString('en-IN')}</div>
-                <div>💎 TOKENS: {state.gems}</div>
+                <div>🪙 COINS: {(state.gold ?? 0).toLocaleString('en-IN')}</div>
+                <div>💎 TOKENS: {state.gems ?? 0}</div>
                 <button
                   onClick={handleLogout}
                   className="mt-1 w-full font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-red-400 hover:text-red-300 transition-all"
@@ -622,7 +704,7 @@ export default function MainGameView() {
                   { label: 'MAP', icon: '🗺️', onClick: () => showToast('🗺️ Map — coming soon!') },
                   { label: 'INVENTORY', icon: '🎒', onClick: () => showToast('🎒 Inventory — coming soon!') },
                   { label: 'QUESTS', icon: '📜', onClick: () => setModal('budgeting-city') },
-                  { label: 'MENU', icon: '☰', onClick: () => router.push('/') },
+                  { label: 'MENU', icon: '☰', onClick: () => (window.location.href = '/') },
                 ].map((btn) => (
                   <button
                     key={btn.label}
@@ -711,13 +793,6 @@ export default function MainGameView() {
               <button onClick={() => setModal(null)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
             </div>
             <div className="p-6">
-              {fetchingDorm ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <div className="w-8 h-8 border-2 border-gold/40 border-t-gold rounded-full animate-spin" />
-                  <div className="font-pixel text-[10px] text-[var(--text-muted)]">Generating scenario...</div>
-                </div>
-              ) : (
-              <>
               <div className="mb-4">
                 <div className="font-pixel text-gold text-xs mb-2">{dormScenario?.character ?? 'Roommate Rahul'}:</div>
                 <p className="text-[var(--text)] text-sm leading-relaxed">
@@ -739,10 +814,10 @@ export default function MainGameView() {
                       onClick={() => dormChoice(i)}
                       disabled={selectedChoice !== null}
                       className={`text-left p-4 rounded border flex justify-between items-center transition-all ${chosen
-                          ? 'border-green-500 bg-green-500/15'
-                          : unchosen
-                            ? 'border-white/10 bg-white/3 opacity-50'
-                            : 'border-white/15 hover:border-gold bg-white/5'
+                        ? 'border-green-500 bg-green-500/15'
+                        : unchosen
+                          ? 'border-white/10 bg-white/3 opacity-50'
+                          : 'border-white/15 hover:border-gold bg-white/5'
                         }`}
                     >
                       <span className="font-pixel text-gold text-xs">
@@ -799,8 +874,6 @@ export default function MainGameView() {
                   ← Back to City
                 </button>
               </div>
-              </>
-              )}
             </div>
           </div>
         </div>
@@ -814,20 +887,13 @@ export default function MainGameView() {
           onGameOver={(finalScore, clearedLines) => {
             const xpEarned = Math.min(150, Math.floor(finalScore / 100));
             if (xpEarned > 0 || clearedLines > 0) {
-              setState((s) => {
-                const newTotalXp = (s.totalXp ?? s.xp) + xpEarned;
-                const updated: GameState = {
-                  ...s,
-                  xp: s.xp + xpEarned,
-                  totalXp: newTotalXp,
-                  gold: s.gold + xpEarned * 2,
-                  tetrisCorrect: (s.tetrisCorrect ?? 0) + clearedLines,
-                  questsDone: s.questsDone + 1,
-                  budgetProgress: Math.min(100, s.budgetProgress + 20),
-                };
-                updated.earnedBadges = checkBadges(updated);
-                return updated;
-              });
+              setState((s) => ({
+                ...s,
+                xp: s.xp + xpEarned,
+                gold: s.gold + xpEarned * 2,
+                questsDone: s.questsDone + 1,
+                budgetProgress: Math.min(100, s.budgetProgress + 20),
+              }));
               addTutorToSidebar(
                 `Budget Tetris: cleared ${clearedLines} line(s), saved virtual ₹${finalScore.toLocaleString('en-IN')}.`
               );
@@ -843,23 +909,15 @@ export default function MainGameView() {
 
       {modal === 'market' && (
         <BudgetGame
-          monthlyIncome={state.financialProfile?.monthlyIncome}
           onClose={() => setModal(null)}
           onComplete={(correct, xp, gold) => {
-            setState(s => {
-              const newTotalXp = (s.totalXp ?? s.xp) + xp;
-              const updated: GameState = {
-                ...s,
-                xp: s.xp + xp,
-                totalXp: newTotalXp,
-                gold: s.gold + gold,
-                perfectBudgetGame: correct === 12 ? true : s.perfectBudgetGame,
-                questsDone: s.questsDone + 1,
-                budgetProgress: Math.min(100, s.budgetProgress + 33),
-              };
-              updated.earnedBadges = checkBadges(updated);
-              return updated;
-            });
+            setState(s => ({
+              ...s,
+              xp: s.xp + xp,
+              gold: s.gold + gold,
+              questsDone: s.questsDone + 1,
+              budgetProgress: Math.min(100, s.budgetProgress + 33),
+            }));
             markQuestStep('q-budget-basics', 1);
             showToast(`+${xp} XP · +₹${gold} Gold 🎉`);
           }}
@@ -870,20 +928,13 @@ export default function MainGameView() {
         <CafeGame
           onClose={() => setActiveGame(null)}
           onComplete={(xpEarned) => {
-            setState((s) => {
-              const newTotalXp = (s.totalXp ?? s.xp) + xpEarned;
-              const updated: GameState = {
-                ...s,
-                xp: s.xp + xpEarned,
-                totalXp: newTotalXp,
-                gold: s.gold + Math.floor(xpEarned * 2),
-                cafeResists: (s.cafeResists ?? 0) + Math.floor(xpEarned / 10),
-                questsDone: s.questsDone + 1,
-                budgetProgress: Math.min(100, s.budgetProgress + 20),
-              };
-              updated.earnedBadges = checkBadges(updated);
-              return updated;
-            });
+            setState((s) => ({
+              ...s,
+              xp: s.xp + xpEarned,
+              gold: s.gold + Math.floor(xpEarned * 2),
+              questsDone: s.questsDone + 1,
+              budgetProgress: Math.min(100, s.budgetProgress + 20),
+            }));
             showToast(`+${xpEarned} XP earned! ☕`);
           }}
         />
@@ -893,20 +944,13 @@ export default function MainGameView() {
         <QuizGame
           onClose={() => setActiveGame(null)}
           onComplete={(result) => {
-            setState((s) => {
-              const newTotalXp = (s.totalXp ?? s.xp) + result.xpEarned;
-              const updated: GameState = {
-                ...s,
-                xp: s.xp + result.xpEarned,
-                totalXp: newTotalXp,
-                gold: s.gold + result.goldEarned,
-                quizCorrect: (s.quizCorrect ?? 0) + result.correct,
-                questsDone: s.questsDone + 1,
-                budgetProgress: Math.min(100, s.budgetProgress + 10),
-              };
-              updated.earnedBadges = checkBadges(updated);
-              return updated;
-            });
+            setState((s) => ({
+              ...s,
+              xp: s.xp + result.xpEarned,
+              gold: s.gold + result.goldEarned,
+              questsDone: s.questsDone + 1,
+              budgetProgress: Math.min(100, s.budgetProgress + 10),
+            }));
             showToast(`🏛️ Quiz complete! +${result.xpEarned} XP`);
           }}
         />

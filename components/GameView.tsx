@@ -132,13 +132,23 @@ function loadState(): {
         ...parsed,
         gold: typeof parsed.gold === 'number' ? parsed.gold : defaults.gold,
         totalXp,
+        gold: Number(parsed.gold) || defaults.gold,
+        gems: Number(parsed.gems) || defaults.gems,
+        level: Number(parsed.level) || defaults.level,
+        xp: Number(parsed.xp) || defaults.xp,
+        hp: Number(parsed.hp) || defaults.hp,
+        questsDone: Number(parsed.questsDone) || 0,
+        budgetProgress: Number(parsed.budgetProgress) || 0,
         financialProfile: {
           ...defaults.financialProfile,
           ...(parsed.financialProfile ?? {}),
         },
       };
     }
-  } catch {}
+  } catch {
+    // Corrupted localStorage — wipe it so the app doesn't keep crashing
+    try { localStorage.removeItem(STORAGE_KEY); } catch { }
+  }
 
   return defaults;
 }
@@ -146,7 +156,7 @@ function loadState(): {
 function saveState(state: ReturnType<typeof loadState>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
+  } catch { }
 }
 
 // ── Penny Cat Tutor Intro ──────────────────────────────────────────────────
@@ -352,19 +362,19 @@ export default function GameView() {
       name: string;
       condition: (s: typeof state) => boolean;
     }> = [
-      { id: 'first_quest', icon: '🎮', name: 'First Quest', condition: (s) => s.questsDone >= 1 },
-      { id: 'budget_master', icon: '💰', name: 'Budget Master', condition: (s) => s.perfectBudgetGame === true },
-      { id: 'tetris_3', icon: '🧱', name: 'Tetris Trainer', condition: (s) => s.tetrisCorrect >= 10 },
-      { id: 'tutor_5', icon: '🤖', name: 'Tutor Seeker', condition: (s) => s.tutorQuestions >= 5 },
-      { id: 'level_3', icon: '⭐', name: 'Level 3', condition: (s) => s.level >= 3 },
-      { id: 'level_5', icon: '🌟', name: 'Level 5', condition: (s) => s.level >= 5 },
-      { id: 'quiz_ace', icon: '🧠', name: 'Quiz Ace', condition: (s) => s.quizCorrect >= 5 },
-      { id: 'saver', icon: '🏦', name: 'Saver', condition: (s) => s.cafeResists >= 10 },
-      { id: 'dilemma_5', icon: '⚔️', name: 'Dilemma Starter', condition: (s) => s.dilemmasCompleted >= 5 },
-      { id: 'dilemma_best', icon: '🏆', name: 'Best Streak', condition: (s) => s.consecutiveBest >= 3 },
-      { id: 'streak_3', icon: '🔥', name: 'Streak 3', condition: (s) => s.streak_days >= 3 },
-      { id: 'completionist', icon: '💎', name: 'Completionist', condition: (s) => s.budgetProgress >= 100 },
-    ];
+        { id: 'first_quest', icon: '🎮', name: 'First Quest', condition: (s) => s.questsDone >= 1 },
+        { id: 'budget_master', icon: '💰', name: 'Budget Master', condition: (s) => s.perfectBudgetGame === true },
+        { id: 'tetris_3', icon: '🧱', name: 'Tetris Trainer', condition: (s) => s.tetrisCorrect >= 10 },
+        { id: 'tutor_5', icon: '🤖', name: 'Tutor Seeker', condition: (s) => s.tutorQuestions >= 5 },
+        { id: 'level_3', icon: '⭐', name: 'Level 3', condition: (s) => s.level >= 3 },
+        { id: 'level_5', icon: '🌟', name: 'Level 5', condition: (s) => s.level >= 5 },
+        { id: 'quiz_ace', icon: '🧠', name: 'Quiz Ace', condition: (s) => s.quizCorrect >= 5 },
+        { id: 'saver', icon: '🏦', name: 'Saver', condition: (s) => s.cafeResists >= 10 },
+        { id: 'dilemma_5', icon: '⚔️', name: 'Dilemma Starter', condition: (s) => s.dilemmasCompleted >= 5 },
+        { id: 'dilemma_best', icon: '🏆', name: 'Best Streak', condition: (s) => s.consecutiveBest >= 3 },
+        { id: 'streak_3', icon: '🔥', name: 'Streak 3', condition: (s) => s.streak_days >= 3 },
+        { id: 'completionist', icon: '💎', name: 'Completionist', condition: (s) => s.budgetProgress >= 100 },
+      ];
 
     const newlyUnlocked = ALL_BADGES.filter((b) => b.condition(state) && !state.earnedBadges.includes(b.id));
     if (newlyUnlocked.length === 0) return;
@@ -761,11 +771,10 @@ export default function GameView() {
             <button
               key={a.name}
               onClick={() => selectAvatar(i)}
-              className={`p-6 rounded border-2 text-center transition-all ${
-                state.avatar.type === a.name
-                  ? 'border-gold bg-gold/10 shadow-lg shadow-gold/20'
-                  : 'border-white/20 bg-white/5 hover:border-gold/50'
-              }`}
+              className={`p-6 rounded border-2 text-center transition-all ${state.avatar.type === a.name
+                ? 'border-gold bg-gold/10 shadow-lg shadow-gold/20'
+                : 'border-white/20 bg-white/5 hover:border-gold/50'
+                }`}
             >
               <span className="text-4xl block mb-2">{a.emoji}</span>
               <div className="font-pixel text-xs text-gold mb-1">{a.name}</div>
@@ -840,9 +849,8 @@ export default function GameView() {
 
             {/* ── HOTSPOT: Budgeting City ── */}
             <div
-              className={`absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 transition-all duration-200 flex items-end justify-center pb-2 ${
-                debugHotspots ? 'border-red-500 bg-red-500/30' : 'border-transparent hover:border-yellow-400/40'
-              }`}
+              className={`absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 transition-all duration-200 flex items-end justify-center pb-2 ${debugHotspots ? 'border-red-500 bg-red-500/30' : 'border-transparent hover:border-yellow-400/40'
+                }`}
               style={{ left: '8%', top: '40%', width: '24%', height: '35%' }}
               onClick={openBudgetingCity}
             >
@@ -853,9 +861,8 @@ export default function GameView() {
 
             {/* ── HOTSPOT: Investment Tower (locked) ── */}
             <div
-              className={`absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl border-2 transition-all duration-200 opacity-60 ${
-                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/20'
-              }`}
+              className={`absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl border-2 transition-all duration-200 opacity-60 ${debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/20'
+                }`}
               style={{ left: '54%', top: '6%', width: '24%', height: '40%' }}
               onClick={() => {
                 if (state.level >= 5) {
@@ -868,9 +875,8 @@ export default function GameView() {
 
             {/* ── HOTSPOT: Central Plaza (quiz) ── */}
             <div
-              className={`absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 transition-all duration-200 flex items-end justify-center pb-2 ${
-                debugHotspots ? 'border-red-500 bg-red-500/30' : 'border-transparent hover:border-yellow-400/40'
-              }`}
+              className={`absolute cursor-pointer hover:bg-yellow-400/15 rounded-xl border-2 transition-all duration-200 flex items-end justify-center pb-2 ${debugHotspots ? 'border-red-500 bg-red-500/30' : 'border-transparent hover:border-yellow-400/40'
+                }`}
               style={{ left: '33%', top: '28%', width: '22%', height: '25%' }}
               onClick={openQuiz}
             >
@@ -881,9 +887,8 @@ export default function GameView() {
 
             {/* ── HOTSPOT: Loan Bank (locked) ── */}
             <div
-              className={`absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl border-2 transition-all duration-200 opacity-60 ${
-                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/20'
-              }`}
+              className={`absolute cursor-pointer hover:bg-yellow-400/10 rounded-xl border-2 transition-all duration-200 opacity-60 ${debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/20'
+                }`}
               style={{ left: '58%', top: '52%', width: '22%', height: '32%' }}
               onClick={() => {
                 if (state.level >= 10) {
@@ -944,7 +949,7 @@ export default function GameView() {
             {/* Gold / Gems / Logout — top right */}
             <div className="absolute top-4 right-4 z-20 pointer-events-auto">
               <div className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-pixel text-[9px] text-[#FFD700] uppercase space-y-1">
-                <div>🪙 COINS: {state.gold.toLocaleString('en-IN')}</div>
+                <div>🪙 COINS: {(state.gold ?? 0).toLocaleString('en-IN')}</div>
                 <div>💎 TOKENS: {state.gems}</div>
                 <button
                   onClick={handleLogout}
@@ -1035,9 +1040,8 @@ export default function GameView() {
 
             {/* ── HOTSPOT: DORMS ── */}
             <div
-              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${
-                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
-              }`}
+              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
+                }`}
               style={{ left: '46%', top: '18%', width: '18%', height: '22%' }}
               onClick={openDorms}
             >
@@ -1048,9 +1052,8 @@ export default function GameView() {
 
             {/* ── HOTSPOT: MARKET (50/30/20 game) ── */}
             <div
-              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${
-                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
-              }`}
+              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
+                }`}
               style={{ left: '8%', top: '28%', width: '26%', height: '28%' }}
               onClick={() => {
                 setPreviousModal('budgeting-city');
@@ -1064,9 +1067,8 @@ export default function GameView() {
 
             {/* ── HOTSPOT: UNIV. CAFÉ ── */}
             <div
-              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${
-                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
-              }`}
+              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
+                }`}
               style={{ left: '52%', top: '40%', width: '22%', height: '26%' }}
               onClick={openCafe}
             >
@@ -1077,9 +1079,8 @@ export default function GameView() {
 
             {/* ── HOTSPOT: CITY HALL (quiz) ── */}
             <div
-              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${
-                debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
-              }`}
+              className={`absolute cursor-pointer hover:bg-yellow-400/20 rounded-lg border-2 transition-all flex items-end justify-center pb-1 ${debugHotspots ? 'border-red-500 bg-red-500/30 hover:bg-red-500/30' : 'border-transparent hover:border-yellow-400/50'
+                }`}
               style={{ left: '52%', top: '4%', width: '22%', height: '18%' }}
               onClick={openQuiz}
             >
@@ -1106,7 +1107,7 @@ export default function GameView() {
             <div className="absolute bottom-4 left-4 z-10 pointer-events-none">
               <div className="border-2 border-[#1a1a1a] bg-[rgba(10,10,10,0.80)] px-3 py-2 rounded font-pixel text-[9px] text-gold space-y-0.5">
                 <div>{state.avatar.emoji} {state.username || 'ADVENTURER'}</div>
-                <div>🪙 {state.gold.toLocaleString('en-IN')} · LV.{state.level}</div>
+                <div>🪙 {(state.gold ?? 0).toLocaleString('en-IN')} · LV.{state.level}</div>
               </div>
             </div>
           </div>
@@ -1166,13 +1167,12 @@ export default function GameView() {
                       key={i}
                       disabled={disabled}
                       onClick={() => dormChoice(i)}
-                      className={`text-left p-4 rounded border transition-colors flex justify-between items-center ${
-                        selected
-                          ? 'border-green-500/60 bg-green-500/10'
-                          : disabled
-                            ? 'border-white/10 bg-white/5 opacity-60 cursor-not-allowed'
-                            : 'border-white/15 hover:border-gold bg-white/5'
-                      }`}
+                      className={`text-left p-4 rounded border transition-colors flex justify-between items-center ${selected
+                        ? 'border-green-500/60 bg-green-500/10'
+                        : disabled
+                          ? 'border-white/10 bg-white/5 opacity-60 cursor-not-allowed'
+                          : 'border-white/15 hover:border-gold bg-white/5'
+                        }`}
                     >
                       <span className="font-pixel text-gold text-xs">{choice}</span>
                       <span className="text-sm text-[var(--text-muted)]">
@@ -1246,12 +1246,12 @@ export default function GameView() {
           onComplete={(score, xpEarned, goldEarned) => {
             setState((s) => ({
               ...s,
-                totalXp: s.totalXp + xpEarned,
-                xp: getXpProgress(s.totalXp + xpEarned).xpIntoLevel,
-                level: getXpProgress(s.totalXp + xpEarned).level,
+              totalXp: s.totalXp + xpEarned,
+              xp: getXpProgress(s.totalXp + xpEarned).xpIntoLevel,
+              level: getXpProgress(s.totalXp + xpEarned).level,
               gold: s.gold + goldEarned,
               budgetProgress: Math.min(100, s.budgetProgress + 34),
-                perfectBudgetGame: s.perfectBudgetGame || score >= 12,
+              perfectBudgetGame: s.perfectBudgetGame || score >= 12,
             }));
             showToast(`+${xpEarned} XP, +₹${goldEarned} earned in the Market! 🛒`);
             markQuestStep('q-budget-basics', 1);
@@ -1271,13 +1271,13 @@ export default function GameView() {
             if (xpEarned > 0) {
               setState((s) => ({
                 ...s,
-                  totalXp: s.totalXp + xpEarned,
-                  xp: getXpProgress(s.totalXp + xpEarned).xpIntoLevel,
-                  level: getXpProgress(s.totalXp + xpEarned).level,
+                totalXp: s.totalXp + xpEarned,
+                xp: getXpProgress(s.totalXp + xpEarned).xpIntoLevel,
+                level: getXpProgress(s.totalXp + xpEarned).level,
                 gold: s.gold + xpEarned * 2,
                 questsDone: s.questsDone + 1,
                 budgetProgress: Math.min(100, s.budgetProgress + 20),
-                  tetrisCorrect: s.tetrisCorrect + correctPlacements,
+                tetrisCorrect: s.tetrisCorrect + correctPlacements,
               }));
               if (correctPlacements >= 3) {
                 markQuestStep('q-tetris', 0);
@@ -1383,11 +1383,10 @@ export default function GameView() {
             {tutorMessages.map((m, i) => (
               <div
                 key={i}
-                className={`p-3 rounded text-sm ${
-                  m.role === 'user'
-                    ? 'bg-green/10 border border-green/20 ml-6'
-                    : 'bg-blue-500/15 border border-blue-500/25'
-                }`}
+                className={`p-3 rounded text-sm ${m.role === 'user'
+                  ? 'bg-green/10 border border-green/20 ml-6'
+                  : 'bg-blue-500/15 border border-blue-500/25'
+                  }`}
               >
                 <div className="font-pixel text-xs mb-1 opacity-70">
                   {m.role === 'user' ? 'You' : 'Penny 🐱'}
