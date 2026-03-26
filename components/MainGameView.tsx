@@ -82,25 +82,45 @@ function loadState(): {
     };
   try {
     const s = localStorage.getItem(STORAGE_KEY);
-    if (s) return JSON.parse(s);
-  } catch { }
-  return {
-    avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
-    username: 'ADVENTURER',
+    if (s) {
+      const parsed = JSON.parse(s);
+      const defaults = {
+        avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
+        username: 'ADVENTURER',
+        financialProfile: { monthlyIncome: 15000, incomeLabel: '₹10,000-15,000', livingSituation: 'PG/Hostel', primaryGoal: 'General Literacy', riskTolerance: 'Moderate' },
+        gold: 15000, gems: 50, level: 1, xp: 25, hp: 80, questsDone: 0, budgetProgress: 0,
+      };
+      return {
+        ...defaults,
+        ...parsed,
+        gold: Number(parsed.gold) || defaults.gold,
+        gems: Number(parsed.gems) || defaults.gems,
+        level: Number(parsed.level) || defaults.level,
+        xp: Number(parsed.xp) || defaults.xp,
+        hp: Number(parsed.hp) || defaults.hp,
+        questsDone: Number(parsed.questsDone) || 0,
+        budgetProgress: Number(parsed.budgetProgress) || 0,
+        financialProfile: { ...defaults.financialProfile, ...(parsed.financialProfile ?? {}) },
+      };
+    }
+  } catch {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { }
+  }
+  username: 'ADVENTURER',
     financialProfile: {
-      monthlyIncome: 15000,
+    monthlyIncome: 15000,
       incomeLabel: '₹10,000-15,000',
-      livingSituation: 'PG/Hostel',
-      primaryGoal: 'General Literacy',
-      riskTolerance: 'Moderate',
+        livingSituation: 'PG/Hostel',
+          primaryGoal: 'General Literacy',
+            riskTolerance: 'Moderate',
     },
-    gold: 15000,
+  gold: 15000,
     gems: 50,
-    level: 1,
-    xp: 25,
-    hp: 80,
-    questsDone: 0,
-    budgetProgress: 0,
+      level: 1,
+        xp: 25,
+          hp: 80,
+            questsDone: 0,
+              budgetProgress: 0,
   };
 }
 
@@ -657,8 +677,8 @@ export default function MainGameView() {
 
             <div className="absolute top-4 right-4 z-20 pointer-events-none">
               <div className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-pixel text-[9px] text-[#FFD700] uppercase space-y-1 pointer-events-auto">
-                <div>🪙 COINS: {state.gold.toLocaleString('en-IN')}</div>
-                <div>💎 TOKENS: {state.gems}</div>
+                <div>🪙 COINS: {(state.gold ?? 0).toLocaleString('en-IN')}</div>
+                <div>💎 TOKENS: {state.gems ?? 0}</div>
                 <button
                   onClick={handleLogout}
                   className="mt-1 w-full font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-red-400 hover:text-red-300 transition-all"
@@ -794,10 +814,10 @@ export default function MainGameView() {
                       onClick={() => dormChoice(i)}
                       disabled={selectedChoice !== null}
                       className={`text-left p-4 rounded border flex justify-between items-center transition-all ${chosen
-                          ? 'border-green-500 bg-green-500/15'
-                          : unchosen
-                            ? 'border-white/10 bg-white/3 opacity-50'
-                            : 'border-white/15 hover:border-gold bg-white/5'
+                        ? 'border-green-500 bg-green-500/15'
+                        : unchosen
+                          ? 'border-white/10 bg-white/3 opacity-50'
+                          : 'border-white/15 hover:border-gold bg-white/5'
                         }`}
                     >
                       <span className="font-pixel text-gold text-xs">

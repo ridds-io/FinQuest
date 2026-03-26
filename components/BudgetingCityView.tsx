@@ -79,7 +79,9 @@ function loadState(): GameState {
         financialProfile: { ...DEFAULTS.financialProfile, ...(p.financialProfile ?? {}) },
       };
     }
-  } catch { }
+  } catch {
+    try { localStorage.removeItem(STORAGE_KEY); } catch { }
+  }
   return DEFAULTS;
 }
 
