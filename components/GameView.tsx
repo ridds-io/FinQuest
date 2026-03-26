@@ -130,6 +130,7 @@ function loadState(): {
       return {
         ...defaults,
         ...parsed,
+        gold: typeof parsed.gold === 'number' ? parsed.gold : defaults.gold,
         totalXp,
         financialProfile: {
           ...defaults.financialProfile,

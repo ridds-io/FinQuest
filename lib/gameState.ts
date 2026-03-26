@@ -95,6 +95,7 @@ export function loadState(): GameState {
     return {
       ...DEFAULT_STATE,
       ...parsed,
+      gold: typeof parsed.gold === 'number' ? parsed.gold : DEFAULT_STATE.gold,
       financialProfile: { ...DEFAULT_FINANCIAL_PROFILE, ...(parsed.financialProfile ?? {}) },
       earnedBadges: Array.isArray(parsed.earnedBadges) ? parsed.earnedBadges : [],
       // Migrate: if totalXp is missing, seed it from xp so profile levels don't reset
