@@ -361,6 +361,17 @@ export default function BudgetingCityView() {
                 ))}
               </div>
             </div>
+
+            {/* Arcade button — bottom left */}
+            <div className="absolute bottom-4 left-4 pointer-events-auto">
+              <button
+                onClick={() => setModal('tetris')}
+                className="w-[64px] h-[64px] border-4 border-[#FFD700] bg-[rgba(10,10,10,0.92)] shadow-[4px_4px_0px_0px_rgba(255,215,0,0.4)] font-pixel text-[8px] text-[#FFD700] flex flex-col items-center justify-center gap-1 uppercase hover:bg-[rgba(255,215,0,0.15)] hover:shadow-none hover:translate-y-[4px] transition-all"
+              >
+                <span className="text-xl">🕹️</span>
+                <span>ARCADE</span>
+              </button>
+            </div>
           </div>
         </main>
       </div>
