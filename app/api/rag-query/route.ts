@@ -16,12 +16,13 @@ export async function POST(request: Request) {
       query: string;
       gameState: GameState;
       history?: Message[];
+      mode?: 'tutor' | 'dilemma_feedback';
     };
-    const { query, gameState, history = [] } = body;
+    const { query, gameState, history = [], mode = 'tutor' } = body;
     if (!query) {
       return NextResponse.json({ error: 'query required' }, { status: 400 });
     }
-    const question = await queryRAG(query, gameState ?? { gold: 15000, level: 1 }, history);
+    const question = await queryRAG(query, gameState ?? { gold: 15000, level: 1 }, history, mode);
     return NextResponse.json({ question });
   } catch (e) {
     console.error('rag-query error:', e);

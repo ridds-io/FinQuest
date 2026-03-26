@@ -188,7 +188,7 @@ export default function BudgetingCityView() {
     markQuestStep('q-roommate', 1);
   }, [dormScenario, selectedChoice, showToast, markQuestStep]);
 
-  const sendTutor = useCallback(async (prefill?: string) => {
+  const sendTutor = useCallback(async (prefill?: string, mode: 'tutor' | 'dilemma_feedback' = 'tutor') => {
     setTutorOpen(true);
     const msg = (prefill ?? tutorInput).trim();
     if (!msg || tutorLoading) return;
@@ -202,6 +202,7 @@ export default function BudgetingCityView() {
         body: JSON.stringify({
           query: msg,
           gameState: { gold: state.gold, level: state.level, avatar: state.avatar, xp: state.xp, financialProfile: state.financialProfile },
+          mode,
           history: tutorMessages.slice(-6).map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content })),
         }),
       });
@@ -211,11 +212,6 @@ export default function BudgetingCityView() {
       addTutorToSidebar(reply);
       const tip = extractTip(reply);
       if (tip) setTutorTips((prev) => [...prev.slice(-9), tip]);
-      setState((s) => {
-        const updated: GameState = { ...s, tutorQuestions: (s.tutorQuestions ?? 0) + 1 };
-        updated.earnedBadges = checkBadges(updated);
-        return updated;
-      });
       markQuestStep('q-budget-basics', 2);
       markQuestStep('q-roommate', 2);
     } catch {
@@ -235,7 +231,7 @@ export default function BudgetingCityView() {
     if (explanation) prompt += `\n\nThe explanation given was: "${explanation}"`;
     prompt += '\n\nCan you help me understand the deeper financial lesson here and what I should keep in mind for real life?';
 
-    sendTutor(prompt);
+    sendTutor(prompt, 'dilemma_feedback');
   }, [dormScenario, selectedChoice, sendTutor]);
 
   return (

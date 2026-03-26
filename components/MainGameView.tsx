@@ -363,10 +363,10 @@ export default function MainGameView() {
     if (explanation) prompt += `\n\nThe explanation given was: "${explanation}"`;
     prompt += '\n\nCan you help me understand the deeper financial lesson here and what I should keep in mind for real life?';
 
-    sendTutor(prompt);
+    sendTutor(prompt, 'dilemma_feedback');
   };
 
-  const sendTutor = async (prefill?: string) => {
+  const sendTutor = async (prefill?: string, mode: 'tutor' | 'dilemma_feedback' = 'tutor') => {
     setTutorOpen(true);
     const msg = (prefill ?? tutorInput).trim();
     if (!msg || tutorLoading) return;
@@ -379,9 +379,10 @@ export default function MainGameView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: msg,
-          gameState: { gold: state.gold, level: state.level, avatar: state.avatar, xp: state.xp },
+          gameState: { gold: state.gold, level: state.level, avatar: state.avatar, xp: state.xp, financialProfile: state.financialProfile },
+          mode,
           history: tutorMessages
-            .slice(-6)  // last 6 messages = 3 exchanges, enough context without bloating
+            .slice(-6)
             .map(m => ({
               role: m.role === 'user' ? 'user' : 'assistant',
               content: m.content,
@@ -399,11 +400,7 @@ export default function MainGameView() {
     } catch {
       setTutorMessages((m) => [
         ...m,
-        {
-          role: 'ai',
-          content:
-            "I couldn't connect. What do you think the answer might be based on what you know about money management?",
-        },
+        { role: 'ai', content: "I couldn't connect. What do you think the answer might be based on what you know about money management?" },
       ]);
     }
     setTutorLoading(false);
