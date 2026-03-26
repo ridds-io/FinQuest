@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { INCOME_OPTIONS, LIVING_OPTIONS, GOAL_OPTIONS, RISK_OPTIONS, STORAGE_KEY as GAME_STORAGE_KEY } from '@/lib/gameState';
 
@@ -125,6 +125,14 @@ function loadState(): GameProfileState {
 }
 
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center font-pixel text-gold">Loading...</div>}>
+      <ProfileContent />
+    </Suspense>
+  );
+}
+
+function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
