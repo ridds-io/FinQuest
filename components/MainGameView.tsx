@@ -116,7 +116,13 @@ function loadState(): {
       primaryGoal: 'General Literacy',
       riskTolerance: 'Moderate',
     },
-    gold: 15000, gems: 50, level: 1, xp: 25, hp: 80, questsDone: 0, budgetProgress: 0,
+    gold: 15000,
+    gems: 50,
+    level: 1,
+    xp: 25,
+    hp: 80,
+    questsDone: 0,
+    budgetProgress: 0,
   };
 }
 
