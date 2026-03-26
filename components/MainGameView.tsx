@@ -106,23 +106,26 @@ function loadState(): {
   } catch {
     try { localStorage.removeItem(STORAGE_KEY); } catch { }
   }
-  username: 'ADVENTURER',
+  return {
+    avatar: { emoji: '🎒', name: 'NICK', type: 'Loan Leveraged' },
+    username: 'ADVENTURER',
     financialProfile: {
-    monthlyIncome: 15000,
+      monthlyIncome: 15000,
       incomeLabel: '₹10,000-15,000',
-        livingSituation: 'PG/Hostel',
-          primaryGoal: 'General Literacy',
-            riskTolerance: 'Moderate',
+      livingSituation: 'PG/Hostel',
+      primaryGoal: 'General Literacy',
+      riskTolerance: 'Moderate',
     },
-  gold: 15000,
+    gold: 15000,
     gems: 50,
-      level: 1,
-        xp: 25,
-          hp: 80,
-            questsDone: 0,
-              budgetProgress: 0,
+    level: 1,
+    xp: 25,
+    hp: 80,
+    questsDone: 0,
+    budgetProgress: 0,
   };
 }
+
 
 function saveState(state: ReturnType<typeof loadState>) {
   try {
