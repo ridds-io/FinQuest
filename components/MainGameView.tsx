@@ -126,6 +126,7 @@ function loadState(): {
   };
 }
 
+
 function saveState(state: ReturnType<typeof loadState>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
