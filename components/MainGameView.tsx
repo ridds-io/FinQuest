@@ -353,8 +353,17 @@ export default function MainGameView() {
   };
 
   const handleAskTutorAboutDilemma = () => {
-    const ctx = dormScenario?.situation?.substring(0, 100) ?? 'this financial decision';
-    sendTutor(`Help me understand why this financial situation matters for my budget: "${ctx}"`);
+    if (!dormScenario) return;
+    const situation = dormScenario.situation;
+    const choiceText = selectedChoice !== null ? dormScenario.choices[selectedChoice] : null;
+    const explanation = selectedChoice !== null ? dormScenario.explanations?.[selectedChoice] : null;
+
+    let prompt = `I just faced this financial dilemma: "${situation}"`;
+    if (choiceText) prompt += `\n\nI chose: "${choiceText}"`;
+    if (explanation) prompt += `\n\nThe explanation given was: "${explanation}"`;
+    prompt += '\n\nCan you help me understand the deeper financial lesson here and what I should keep in mind for real life?';
+
+    sendTutor(prompt);
   };
 
   const sendTutor = async (prefill?: string) => {

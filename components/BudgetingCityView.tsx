@@ -225,10 +225,18 @@ export default function BudgetingCityView() {
   }, [tutorInput, tutorLoading, tutorMessages, state, addTutorToSidebar, extractTip, markQuestStep]);
 
   const handleAskTutorAboutDilemma = useCallback(() => {
-    const situation = dormScenario?.situation ?? 'this financial decision';
-    const ctx = situation.length > 120 ? situation.substring(0, 120) + '...' : situation;
-    sendTutor(`Help me understand the financial lesson behind this situation: "${ctx}"`);
-  }, [dormScenario, sendTutor]);
+    if (!dormScenario) return;
+    const situation = dormScenario.situation;
+    const choiceText = selectedChoice !== null ? dormScenario.choices[selectedChoice] : null;
+    const explanation = selectedChoice !== null ? dormScenario.explanations?.[selectedChoice] : null;
+
+    let prompt = `I just faced this financial dilemma: "${situation}"`;
+    if (choiceText) prompt += `\n\nI chose: "${choiceText}"`;
+    if (explanation) prompt += `\n\nThe explanation given was: "${explanation}"`;
+    prompt += '\n\nCan you help me understand the deeper financial lesson here and what I should keep in mind for real life?';
+
+    sendTutor(prompt);
+  }, [dormScenario, selectedChoice, sendTutor]);
 
   return (
     <div className="fixed inset-0 flex flex-col bg-[#16213e] overflow-hidden">
