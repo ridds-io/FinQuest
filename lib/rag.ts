@@ -33,12 +33,7 @@ async function getQueryEmbedding(text: string): Promise<number[] | null> {
   }
 }
 
-export async function queryRAG(
-  query: string,
-  context: GameState,
-  history: Message[] = []
-): Promise<string> {
-  const systemPrompt = `You are Penny, the AI financial mentor in FinQuest — a game for Indian college students in Pune.
+const TUTOR_PROMPT = `You are Penny, the AI financial mentor in FinQuest — a game for Indian college students in Pune.
 
 PERSONALITY:
 - Talk like a smart, friendly senior who has been through it all
@@ -64,7 +59,32 @@ INDIAN CONTEXT:
 - 50/30/20 rule: 50% needs, 30% wants, 20% savings
 - Rs 15,000/month income means Rs 3,000 savings target`;
 
-  // RAG — fully optional, never blocks the tutor if it fails
+const DILEMMA_PROMPT = `You are Penny, the AI financial mentor in FinQuest — a game for Indian college students.
+
+The student just completed a financial dilemma and wants feedback on their choice.
+
+YOUR JOB:
+1. Directly acknowledge the specific choice they made — was it financially smart or not?
+2. Explain the real financial principle behind it in 2-3 concrete sentences
+3. Give one practical takeaway they can apply in real life
+4. End with one short question to deepen their thinking
+
+TONE: Warm and direct, like a knowledgeable friend. Not preachy. Use Indian context (rupees, PG rent, UPI, SIP) where relevant.
+
+RULES:
+- Give a clear, direct answer — this is feedback mode, not Socratic mode
+- Be specific about the exact scenario and choice they described
+- Keep total response under 5 sentences
+- Never use filler phrases like "great question" or "that is interesting"`;
+
+export async function queryRAG(
+  query: string,
+  context: GameState,
+  history: Message[] = [],
+  mode: 'tutor' | 'dilemma_feedback' = 'tutor'
+): Promise<string> {
+  const systemPrompt = mode === 'dilemma_feedback' ? DILEMMA_PROMPT : TUTOR_PROMPT;
+
   let ragContext = '';
   try {
     const embedding = await getQueryEmbedding(query);
@@ -78,7 +98,7 @@ INDIAN CONTEXT:
         });
         if (!error && data?.length) {
           ragContext = '\n\nRelevant knowledge from course material:\n' +
-            data.map((d: { content: string }) => `- ${d.content}`).join('\n\n');
+            (data as { content: string }[]).map((d) => `- ${d.content}`).join('\n\n');
         }
       }
     }
@@ -86,24 +106,23 @@ INDIAN CONTEXT:
     console.warn('RAG skipped:', err instanceof Error ? err.message : err);
   }
 
-  // Build messages: system → history → current question (with RAG context)
-  const fp = (context as unknown as { financialProfile?: {
-    monthlyIncome?: number;
-    incomeLabel?: string;
-    livingSituation?: string;
-    primaryGoal?: string;
-    riskTolerance?: string;
-  } }).financialProfile;
+  const fp = (context as unknown as {
+    financialProfile?: {
+      monthlyIncome?: number;
+      incomeLabel?: string;
+      livingSituation?: string;
+      primaryGoal?: string;
+      riskTolerance?: string;
+    };
+  }).financialProfile;
 
   const fpBlock = fp
-    ? `\n[Financial Profile]\n- Income: ${fp.incomeLabel ?? fp.monthlyIncome ?? 'N/A'}\n- Living: ${
-        fp.livingSituation ?? 'N/A'
-      }\n- Goal: ${fp.primaryGoal ?? 'N/A'}\n- Risk: ${fp.riskTolerance ?? 'N/A'}`
+    ? `\n[Student Profile] Income: ${fp.incomeLabel ?? fp.monthlyIncome ?? 'N/A'} | Living: ${fp.livingSituation ?? 'N/A'} | Goal: ${fp.primaryGoal ?? 'N/A'} | Risk: ${fp.riskTolerance ?? 'N/A'}`
     : '';
 
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: systemPrompt },
-    ...history.map(m => ({
+    ...history.map((m) => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,
     })),
@@ -113,5 +132,6 @@ INDIAN CONTEXT:
     },
   ];
 
-  return callGroq(messages, { max_tokens: 180, temperature: 0.75 });
+  const maxTokens = mode === 'dilemma_feedback' ? 300 : 180;
+  return callGroq(messages, { max_tokens: maxTokens, temperature: 0.75 });
 }
