@@ -288,27 +288,25 @@ export function BudgetTetris({ onClose, onGameOver, monthlyIncome }: BudgetTetri
     ctx.fillStyle = '#0a0e1a';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Zone backgrounds (full height, lighter tint above zone row, stronger at bottom)
+    // Zone column backgrounds — full height
     const zoneEntries = Object.entries(ZONES) as [Category, [number, number]][];
     for (const [cat, [c0, c1]] of zoneEntries) {
-      // Full column tint
-      ctx.fillStyle = ZONE_COLORS[cat] + '12';
-      ctx.fillRect(c0 * CELL, 0, (c1 - c0) * CELL, CANVAS_H);
-      // Stronger tint on the bottom sorting zone
-      ctx.fillStyle = ZONE_COLORS[cat] + '28';
-      ctx.fillRect(c0 * CELL, ZONE_ROW * CELL, (c1 - c0) * CELL, 3 * CELL);
-      // Border around sorting zone only
-      ctx.strokeStyle = ZONE_COLORS[cat] + '66';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(c0 * CELL, ZONE_ROW * CELL, (c1 - c0) * CELL, 3 * CELL);
-      // Vertical divider lines between zones
-      ctx.strokeStyle = ZONE_COLORS[cat] + '33';
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(c0 * CELL, 0); ctx.lineTo(c0 * CELL, CANVAS_H); ctx.stroke();
+      const w = (c1 - c0) * CELL;
+      const x = c0 * CELL;
+      // Full-height tint
+      ctx.fillStyle = ZONE_COLORS[cat] + '30';
+      ctx.fillRect(x, 0, w, CANVAS_H);
+      // Extra emphasis on the bottom sorting zone
+      ctx.fillStyle = ZONE_COLORS[cat] + '50';
+      ctx.fillRect(x, ZONE_ROW * CELL, w, 3 * CELL);
+      // Sorting zone border
+      ctx.strokeStyle = ZONE_COLORS[cat] + 'aa';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.75, ZONE_ROW * CELL + 0.75, w - 1.5, 3 * CELL - 1.5);
     }
 
-    // Grid lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    // Grid lines (drawn after zone tints so they sit on top)
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.lineWidth = 0.5;
     for (let r = 0; r < ROWS; r++) {
       ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(CANVAS_W, r * CELL); ctx.stroke();
@@ -317,7 +315,7 @@ export function BudgetTetris({ onClose, onGameOver, monthlyIncome }: BudgetTetri
       ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, CANVAS_H); ctx.stroke();
     }
 
-    // Zone labels
+    // Zone labels at bottom
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'center';
     for (const [cat, [c0, c1]] of zoneEntries) {
