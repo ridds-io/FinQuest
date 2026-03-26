@@ -1,11 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { callGroq } from '@/lib/groq';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-export async function GET() {
-  const categories = ['needs', 'wants', 'savings'];
+export async function POST(_req: NextRequest) {
   const prompt = `Generate 12 realistic monthly expenses for an Indian college student in Pune earning Rs 15,000/month.
 Mix of: rent/PG costs, food, transport, mobile, entertainment, investments, subscriptions, education costs.
 Vary the order randomly — do not always start with rent.
@@ -23,8 +22,6 @@ Rules:
 - Vary which expenses appear — sometimes include fest ticket, sometimes coaching fee, etc
 - The order should be randomized each call`;
 
-  void categories;
-
   try {
     const raw = await callGroq(
       [{ role: 'user', content: prompt }],
@@ -34,8 +31,6 @@ Rules:
     const expenses = JSON.parse(cleaned);
     return NextResponse.json({ expenses });
   } catch {
-    // Return hardcoded fallback
     return NextResponse.json({ expenses: null });
   }
 }
-

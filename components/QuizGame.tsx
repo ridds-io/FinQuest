@@ -77,13 +77,13 @@ const QUIZ_QUESTIONS = [
 
 type Question = typeof QUIZ_QUESTIONS[number];
 
-function pickThree(): Question[] {
+function pickFive(): Question[] {
   const pool = [...QUIZ_QUESTIONS];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return pool.slice(0, 3);
+  return pool.slice(0, Math.min(5, pool.length));
 }
 
 export function QuizGame({
@@ -93,7 +93,7 @@ export function QuizGame({
   onClose: () => void;
   onComplete: (result: { correct: number; total: number; xpEarned: number; goldEarned: number; topicsToBrushUp: string[] }) => void;
 }) {
-  const questions = useMemo(() => pickThree(), []);
+  const questions = useMemo(() => pickFive(), []);
   const [i, setI] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [showExplain, setShowExplain] = useState(false);
@@ -148,7 +148,7 @@ export function QuizGame({
           <div>
             <div className="font-pixel text-gold text-sm">🏛️ Central Plaza — Financial Quiz</div>
             <div className="text-xs text-[var(--text-muted)] mt-0.5">
-              3 questions · explanations included
+              5 questions · explanations included
             </div>
           </div>
           <button onClick={onClose} className="text-[var(--text-muted)] hover:text-red-400 text-xl ml-4">✕</button>
