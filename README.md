@@ -11,24 +11,59 @@
 
 ---
 
-## ⚡ Quick Start (Production — Grok API + Vercel)
+## 📁 Repository Structure
 
-This codebase is **production-ready** with **xAI Grok API** (replacing Claude) and Supabase.
+This repository follows a **phase-based migration** strategy. See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full migration roadmap.
+
+```
+FinQuest/
+├── frontend/          # ✅ Phase 1 — Next.js + React + Phaser (active)
+│   ├── public/        # Static assets (sprites, maps, icons)
+│   ├── src/
+│   │   ├── app/       # Next.js App Router pages & API routes
+│   │   ├── components/
+│   │   │   ├── games/       # Game-specific components
+│   │   │   ├── ui/          # Reusable UI components
+│   │   │   └── layout/      # Layout & context providers
+│   │   ├── lib/       # Shared utilities (gameState, groq, rag)
+│   │   ├── phaser/    # Phaser engine integration (placeholder)
+│   │   ├── store/     # State management (placeholder)
+│   │   └── types/     # TypeScript definitions
+│   ├── scripts/       # Seed & utility scripts
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── backend/           # 🔜 Phase 2 placeholder — Node.js API
+├── game-engine/       # 🔜 Phase 2 placeholder — Python game logic
+├── ai-service/        # 🔜 Phase 2 placeholder — Python RAG service
+├── supabase/          # Database migrations
+├── docker-compose.yml # Local dev orchestration template
+├── ARCHITECTURE.md    # Phase-based migration documentation
+└── .env.example       # Environment variable reference
+```
+
+---
+
+## ⚡ Quick Start
 
 ```bash
-cp .env.example .env.local
-# Edit .env.local: set XAI_API_KEY (get from https://console.x.ai/), Supabase URL + keys
+# 1. Set up environment variables
+cp .env.example frontend/.env.local
+# Edit frontend/.env.local: set GROQ_API_KEY, Supabase URL + keys
+
+# 2. Install dependencies and run
+cd frontend
 npm install
 npm run dev
 ```
 
 - **Landing:** `/` — Marketing + Start Game  
-- **Game:** `/game` — Avatar select → Phaser world, zones, Dorms (Grok scenarios), AI Tutor (RAG + Grok)  
+- **Game:** `/game` — Avatar select → Phaser world, zones, Dorms (Groq scenarios), AI Tutor (RAG + Groq)  
 - **Profile:** `/profile` — Progress, gold, achievements (persisted in `localStorage`)
 
-**Deploy to Vercel:** `vercel --prod` (or connect GitHub). Ensure env vars are set in Vercel dashboard.
+**Deploy to Vercel:** Connect GitHub. The `vercel.json` at root sets `rootDirectory: "frontend"` automatically. Ensure env vars are set in the Vercel dashboard.
 
-**PWA:** Add `public/icon-192.png` and `public/icon-512.png` for install prompt. Game state is cached in `localStorage` for offline play.
+**PWA:** `frontend/public/icon-192.png` and `icon-512.png` enable install prompt. Game state is cached in `localStorage` for offline play.
 
 ---
 

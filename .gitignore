@@ -12,6 +12,8 @@ coverage/
 out/
 build/
 dist/
+frontend/.next/
+frontend/out/
 
 # Environment variables
 .env
@@ -40,3 +42,7 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# TypeScript build info
+tsconfig.tsbuildinfo
+frontend/tsconfig.tsbuildinfo

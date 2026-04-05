@@ -1,0 +1,68 @@
+# docker-compose.yml — Local development orchestration template
+# Phase 1: Only the frontend service is active.
+# Uncomment backend / game-engine / ai-service blocks when Phase 2 services are ready.
+
+version: '3.9'
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Frontend — Next.js application
+  # ─────────────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Backend — Node.js / Express API (Phase 2 — currently a placeholder)
+  # ─────────────────────────────────────────────────────────────────────────
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - '4000:4000'
+  #   environment:
+  #     - NODE_ENV=development
+  #     - DATABASE_URL=${DATABASE_URL}
+  #     - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+  #   depends_on:
+  #     - frontend
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Game Engine — Python FastAPI service (Phase 2 — currently a placeholder)
+  # ─────────────────────────────────────────────────────────────────────────
+  # game-engine:
+  #   build:
+  #     context: ./game-engine
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - '8000:8000'
+  #   environment:
+  #     - ENV=development
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # AI Service — Python RAG service (Phase 2 — currently a placeholder)
+  # ─────────────────────────────────────────────────────────────────────────
+  # ai-service:
+  #   build:
+  #     context: ./ai-service
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - '8001:8001'
+  #   environment:
+  #     - ENV=development
+  #     - GROQ_API_KEY=${GROQ_API_KEY}
+  #     - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}

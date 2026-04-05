@@ -1,6 +1,7 @@
 {
   "buildCommand": "npm run build",
   "framework": "nextjs",
+  "rootDirectory": "frontend",
   "regions": ["bom1"],
   "headers": [
     {

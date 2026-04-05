@@ -1,7 +1,7 @@
 'use client';
 import dynamic from 'next/dynamic';
 
-const MainGameView = dynamic(() => import('@/components/MainGameView'), {
+const MainGameView = dynamic(() => import('@/components/games/MainGameView'), {
   ssr: false,
   loading: () => (
     <div className="min-h-screen flex items-center justify-center bg-[#16213e]">
