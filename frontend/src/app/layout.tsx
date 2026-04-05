@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { SupabaseProvider } from '@/components/SupabaseProvider';
+import { SupabaseProvider } from '@/components/layout/SupabaseProvider';
 
 export const metadata: Metadata = {
   title: 'FinQuest — A Monetary Odyssey',

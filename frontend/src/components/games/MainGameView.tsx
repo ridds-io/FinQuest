@@ -12,15 +12,15 @@ import {
   saveQuestSteps,
   applyQuestSteps,
   type SidebarEntry,
-} from '@/components/QuestSidebar';
+} from '@/components/games/QuestSidebar';
 
 const BudgetTetris = dynamic(
-  () => import('@/components/BudgetTetris').then((m) => m.BudgetTetris),
+  () => import('@/components/games/BudgetTetris').then((m) => m.BudgetTetris),
   { ssr: false },
 );
-const BudgetGame = dynamic(() => import('@/components/BudgetGame').then((m) => m.BudgetGame), { ssr: false });
-const CafeGame = dynamic(() => import('@/components/CafeGame').then((m) => m.CafeGame), { ssr: false });
-const QuizGame = dynamic(() => import('@/components/QuizGame').then((m) => m.QuizGame), { ssr: false });
+const BudgetGame = dynamic(() => import('@/components/games/BudgetGame').then((m) => m.BudgetGame), { ssr: false });
+const CafeGame = dynamic(() => import('@/components/games/CafeGame').then((m) => m.CafeGame), { ssr: false });
+const QuizGame = dynamic(() => import('@/components/games/QuizGame').then((m) => m.QuizGame), { ssr: false });
 
 const AVATARS = [
   { emoji: '📚', name: 'Scholarship Grinder', gold: 500, stat: 'HIGH' },

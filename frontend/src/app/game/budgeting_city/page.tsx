@@ -1,7 +1,7 @@
 'use client';
 import dynamic from 'next/dynamic';
 
-const BudgetingCityView = dynamic(() => import('@/components/BudgetingCityView'), {
+const BudgetingCityView = dynamic(() => import('@/components/games/BudgetingCityView'), {
   ssr: false,
   loading: () => (
     <div className="min-h-screen flex items-center justify-center bg-[#16213e]">
