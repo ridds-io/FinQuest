@@ -53,6 +53,11 @@ export type GameState = {
   hp: number;
   questsDone: number;
   budgetProgress: number;
+  // Invest City progress
+  investScenariosDone: number;
+  portfolioBuilds: number;
+  sipSessions: number;
+  investProgress: number; // 0–100
 };
 
 const DEFAULT_FINANCIAL_PROFILE: FinancialProfile = {
@@ -84,6 +89,11 @@ const DEFAULT_STATE: GameState = {
   hp: 80,
   questsDone: 0,
   budgetProgress: 0,
+  // Invest City
+  investScenariosDone: 0,
+  portfolioBuilds: 0,
+  sipSessions: 0,
+  investProgress: 0,
 };
 
 export function loadState(): GameState {
