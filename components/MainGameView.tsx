@@ -618,8 +618,8 @@ export default function MainGameView() {
             <div
               className="absolute cursor-pointer rounded border border-transparent hover:border-yellow-400/20 hover:bg-yellow-400/10 transition-all duration-200 mix-blend-screen"
               style={{ left: '62.7%', top: '23.5%', width: '15.5%', height: '5.5%' }}
-              onClick={() => showToast('🔒 Complete Budgeting City to unlock Investment Tower!')}
-              title="Investment Tower (Locked)"
+              onClick={() => router.push('/game/invest_city')}
+              title="Investment Tower"
             />
             {/* Central Plaza */}
             <div
