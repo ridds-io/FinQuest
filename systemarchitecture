@@ -1,0 +1,117 @@
+FinQuest System Architecture
+
+1. Client Layer
+- Web UI (React/Vue)
+- Mobile Apps (iOS/Android)
+- Auth flow (OAuth2 / JWT)
+
+2. API Layer
+- API Gateway (rate limit, auth, routing)
+- REST/GraphQL endpoints
+- Request validation
+
+3. Services Layer
+- Account Service (user profiles, KYC)
+- Portfolio Service (holdings, performance)
+- Market Data Service (price feeds, news)
+- Order Service (trade execution, order book)
+- Analytics Service (risk, recommendations)
+
+4. Data Layer
+- SQL DB for transactional data (Postgres)
+- NoSQL for time series/cache (Redis, Mongo)
+- Data warehouse (Snowflake / BigQuery)
+- Audit logs (append-only)
+
+5. Integration
+- Brokerage/exchange APIs
+- Payment/Gateway APIs
+- 3rd-party market data providers
+
+6. Infrastructure
+- Kubernetes for deployment
+- CI/CD pipeline
+- Monitoring/alerting (Prometheus/Grafana)
+- Secrets management (Vault)
+
+7. Security
+- TLS in transit
+- Encryption at rest
+- Role-based access control
+- Fraud detection module
+
+8. Non-functional
+- High availability, autoscaling
+- Disaster recovery/backup
+- Observability/logging
+
+Use this as blueprint for implementing FinQuest system architecture.
+
+#more
+FinQuest/
+├── finquest.html
+├── middleware.ts
+├── next-env.d.ts
+├── next.config.js
+├── package.json
+├── postcss.config.js
+├── README.md
+├── systemarchitecture
+├── tailwind.config.ts
+├── tsconfig.json
+├── vercel.json
+│
+├── app/
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── page.tsx
+│   │
+│   ├── api/
+│   │   ├── generate-expenses/route.ts
+│   │   ├── generate-scenario/route.ts
+│   │   └── rag-query/route.ts
+│   │
+│   ├── game/
+│   │   ├── page.tsx
+│   │   ├── budgeting_city/page.tsx
+│   │   └── main_game/page.tsx
+│   │
+│   ├── login/page.tsx
+│   ├── profile/page.tsx
+│   └── reset-password/page.tsx
+│
+├── components/
+│   ├── BudgetGame.tsx
+│   ├── BudgetingCityView.tsx
+│   ├── BudgetTetris.tsx
+│   ├── CafeGame.tsx
+│   ├── GameCanvas.tsx
+│   ├── GameView.tsx
+│   ├── MainGameView.tsx
+│   ├── QuestSidebar.tsx
+│   ├── QuizGame.tsx
+│   └── SupabaseProvider.tsx
+│
+├── lib/
+│   ├── groq.ts
+│   ├── rag.ts
+│   └── supabase-server.ts
+│
+├── public/
+│   ├── manifest.json
+│   ├── extra_sprites/
+│   ├── map/
+│   │   └── _extract/icc.icc
+│   └── sprites/
+│       ├── buildings/
+│       └── environment/
+│
+├── scripts/
+│   ├── seed-docs.ts
+│   └── pdfs/
+│
+├── supabase/
+│   └── migrations/20240315000000_init.sql
+│
+└── types/
+    └── index.ts
