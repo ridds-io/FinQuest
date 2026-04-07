@@ -21,6 +21,7 @@ import {
   type GameState,
 } from '@/lib/gameState';
 import { useSupabase } from '@/components/SupabaseProvider';
+import { PennyAssistant } from '@/components/PennyAssistant';
 
 const BudgetTetris = dynamic(
   () => import('@/components/BudgetTetris').then((m) => m.BudgetTetris),
@@ -71,6 +72,7 @@ export default function BudgetingCityView() {
   const [tutorInput, setTutorInput] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorTips, setTutorTips] = useState<string[]>([]);
+  const [pennyOpen, setPennyOpen] = useState(false);
 
   const persist = useCallback(() => {
     saveState(state);
@@ -81,6 +83,13 @@ export default function BudgetingCityView() {
   }, [state, persist]);
 
   useEffect(() => { saveQuestSteps(sidebarEntries); }, [sidebarEntries]);
+
+  useEffect(() => {
+    const seen = localStorage.getItem('finquest_penny_seen_budgeting') === 'true';
+    if (!seen) {
+      setTimeout(() => setPennyOpen(true), 1500);
+    }
+  }, []);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -375,6 +384,12 @@ export default function BudgetingCityView() {
           </div>
         </main>
       </div>
+
+      <PennyAssistant
+        scene="budgeting"
+        isOpen={pennyOpen}
+        onClose={() => setPennyOpen(false)}
+      />
 
       {/* Modal: Dorms */}
       {modal === 'dorms' && (
