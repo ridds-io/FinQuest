@@ -58,6 +58,12 @@ export type GameState = {
   portfolioBuilds: number;
   sipSessions: number;
   investProgress: number; // 0–100
+
+  // Loan City progress
+  loanScenariosDone: number;
+  emiChallengesDone: number;
+  debtClassificationsDone: number;
+  loanProgress: number; // 0–100
 };
 
 const DEFAULT_FINANCIAL_PROFILE: FinancialProfile = {
@@ -94,6 +100,12 @@ const DEFAULT_STATE: GameState = {
   portfolioBuilds: 0,
   sipSessions: 0,
   investProgress: 0,
+
+  // Loan City
+  loanScenariosDone: 0,
+  emiChallengesDone: 0,
+  debtClassificationsDone: 0,
+  loanProgress: 0,
 };
 
 export function loadState(): GameState {

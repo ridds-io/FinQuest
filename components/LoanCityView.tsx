@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
   QuestSidebar,
@@ -20,6 +21,22 @@ import {
 } from '@/lib/gameState';
 import { PennyAssistant } from '@/components/PennyAssistant';
 
+// ── Lazy-load games (no SSR) ──────────────────────────────────────────────────
+const LoanScenarioGame = dynamic(
+  () => import('@/components/loan/LoanScenarioGame').then((m) => m.LoanScenarioGame),
+  { ssr: false },
+);
+const EMIAffordabilityGame = dynamic(
+  () => import('@/components/loan/EMIAffordabilityGame').then((m) => m.EMIAffordabilityGame),
+  { ssr: false },
+);
+const DebtClassifierGame = dynamic(
+  () => import('@/components/loan/DebtClassifierGame').then((m) => m.DebtClassifierGame),
+  { ssr: false },
+);
+
+type ActiveGame = null | 'decision' | 'emi' | 'classifier';
+
 export default function LoanCityView() {
   const router = useRouter();
   const [state, setState] = useState<GameState>(loadState);
@@ -27,7 +44,7 @@ export default function LoanCityView() {
     applyQuestSteps([...QUEST_DEFINITIONS, ...INITIAL_TIPS], loadQuestSteps())
   );
   const [toast, setToast] = useState('');
-  const [modal, setModal] = useState<string | null>(null);
+  const [activeGame, setActiveGame] = useState<ActiveGame>(null);
   const [pennyOpen, setPennyOpen] = useState(false);
 
   const persist = useCallback(() => {
@@ -51,6 +68,65 @@ export default function LoanCityView() {
     setToast(msg);
     setTimeout(() => setToast(''), 2500);
   }, []);
+
+  const handleGameComplete = useCallback(
+    (xp: number, gold: number, gameKey: ActiveGame) => {
+      setState((s) => {
+        const newTotalXp = (s.totalXp ?? s.xp) + xp;
+        const updated: GameState = {
+          ...s,
+          xp: (s.xp ?? 0) + xp,
+          totalXp: newTotalXp,
+          gold: (s.gold ?? 0) + gold,
+          questsDone: (s.questsDone ?? 0) + 1,
+          loanProgress: Math.min(100, (s.loanProgress ?? 0) + 20),
+          loanScenariosDone: gameKey === 'decision' ? (s.loanScenariosDone ?? 0) + 1 : s.loanScenariosDone ?? 0,
+          emiChallengesDone: gameKey === 'emi' ? (s.emiChallengesDone ?? 0) + 1 : s.emiChallengesDone ?? 0,
+          debtClassificationsDone: gameKey === 'classifier' ? (s.debtClassificationsDone ?? 0) + 1 : s.debtClassificationsDone ?? 0,
+        };
+        updated.earnedBadges = checkBadges(updated);
+        return updated;
+      });
+      showToast(`+${xp} XP · +₹${gold} Gold 🎉`);
+    },
+    [showToast]
+  );
+
+  const { pct: xpPct } = getXpProgress(state.totalXp ?? state.xp);
+
+  const GAMES: Array<{
+    key: ActiveGame;
+    label: string;
+    emoji: string;
+    description: string;
+    style: React.CSSProperties;
+    borderHover: string;
+  }> = [
+    {
+      key: 'decision',
+      label: 'Debt Decision',
+      emoji: '⚖️',
+      description: 'Good vs Bad Debt',
+      style: { left: '7%', top: '15%', width: '24%', height: '43%' },
+      borderHover: 'hover:border-blue-400/50',
+    },
+    {
+      key: 'emi',
+      label: 'EMI Challenge',
+      emoji: '📊',
+      description: 'Is it affordable?',
+      style: { left: '35%', top: '28%', width: '33%', height: '52%' },
+      borderHover: 'hover:border-yellow-400/50',
+    },
+    {
+      key: 'classifier',
+      label: 'Debt Classifier',
+      emoji: '🔍',
+      description: 'Productive vs Wasteful',
+      style: { left: '67%', top: '8%', width: '27%', height: '76%' },
+      borderHover: 'hover:border-green-400/50',
+    },
+  ];
 
   return (
     <div className="fixed inset-0 flex flex-col bg-[#16213e] overflow-hidden">
@@ -80,32 +156,21 @@ export default function LoanCityView() {
               ← BACK TO WORLD
             </button>
 
-            {/* DEBT DECISION (Left building) */}
-            <div
-              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-blue-400/50 transition-all flex items-end justify-center pb-1 z-10"
-              style={{ left: '7%', top: '15%', width: '24%', height: '43%' }}
-              onClick={() => showToast('⚖️ Debt Decision: Choose the right loan structure.')}
-            >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">DEBT DECISION</span>
-            </div>
-
-            {/* EMI AFFORDABILITY CHALLENGE (Center complex) */}
-            <div
-              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-yellow-400/50 transition-all flex items-end justify-center pb-1 z-10"
-              style={{ left: '35%', top: '28%', width: '33%', height: '52%' }}
-              onClick={() => showToast('📊 EMI Affordability Challenge: Can you handle the monthly payments?')}
-            >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">EMI CHALLENGE</span>
-            </div>
-
-            {/* GROWTH THINKING (Right building) */}
-            <div
-              className="absolute cursor-pointer hover:-translate-y-1 rounded-lg border-2 border-transparent hover:border-green-400/50 transition-all flex items-end justify-center pb-1 z-10"
-              style={{ left: '67%', top: '8%', width: '27%', height: '76%' }}
-              onClick={() => showToast('🚀 Growth Thinking: Using loans to leverage your future.')}
-            >
-              <span className="font-pixel text-[8px] text-white bg-black/70 px-1.5 py-0.5 rounded opacity-0 hover:opacity-100">GROWTH THINKING</span>
-            </div>
+            {/* INTERACTIVE HOTSPOTS */}
+            {GAMES.map((g) => (
+              <div
+                key={g.key}
+                className={`absolute cursor-pointer rounded-xl border-2 border-transparent ${g.borderHover} hover:bg-white/5 transition-all duration-200 flex flex-col items-center justify-end pb-3 z-10 group`}
+                style={g.style}
+                onClick={() => setActiveGame(g.key)}
+              >
+                <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 bg-black/80 rounded-lg px-2 py-1.5 text-center backdrop-blur-sm pointer-events-none">
+                  <div className="text-lg mb-0.5">{g.emoji}</div>
+                  <div className="font-pixel text-[8px] text-white leading-tight uppercase">{g.label}</div>
+                  <div className="font-pixel text-[7px] text-[var(--text-muted)]">{g.description}</div>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="absolute inset-0 pointer-events-none z-20">
@@ -114,8 +179,11 @@ export default function LoanCityView() {
                 <div className="w-12 h-12 bg-blue-900 border-2 border-gray-600 rounded flex items-center justify-center text-2xl">{state.avatar.emoji}</div>
                 <div>
                   <div className="font-pixel text-[9px] text-[var(--text)] uppercase mb-1">{state.username}, LV.{state.level ?? 1}</div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 mb-1">
                     {Array.from({ length: 10 }).map((_, i) => <span key={i}>{((state.hp ?? 80) / 10) > i ? '❤️' : '🖤'}</span>)}
+                  </div>
+                  <div className="flex gap-1">
+                    {Array.from({ length: 10 }).map((_, i) => <span key={i}>{(xpPct / 10) > i ? '💎' : '◇'}</span>)}
                   </div>
                 </div>
               </div>
@@ -130,7 +198,7 @@ export default function LoanCityView() {
             <div className="absolute top-4 right-4 pointer-events-auto">
               <div className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-pixel text-[9px] text-[#FFD700] uppercase space-y-1">
                 <div>🪙 {(state.gold ?? 0).toLocaleString('en-IN')}</div>
-                <div>📊 {state.questsDone ?? 0} quests</div>
+                <div>📊 {state.loanProgress ?? 0}% progress</div>
                 <button onClick={() => router.push('/profile?from=loan_city')} className="mt-1 w-full font-pixel text-xs bg-white/10 border border-white/20 text-[var(--text)] px-3 py-1.5 rounded hover:border-gold/50 hover:text-gold transition-all">
                   👤 Profile
                 </button>
@@ -157,6 +225,28 @@ export default function LoanCityView() {
           </div>
         </main>
       </div>
+
+      {/* ACTIVE GAMES */}
+      {activeGame === 'decision' && (
+        <LoanScenarioGame
+          onClose={() => setActiveGame(null)}
+          onComplete={(xp, gold) => handleGameComplete(xp, gold, 'decision')}
+        />
+      )}
+
+      {activeGame === 'emi' && (
+        <EMIAffordabilityGame
+          onClose={() => setActiveGame(null)}
+          onComplete={(xp, gold) => handleGameComplete(xp, gold, 'emi')}
+        />
+      )}
+
+      {activeGame === 'classifier' && (
+        <DebtClassifierGame
+          onClose={() => setActiveGame(null)}
+          onComplete={(xp, gold) => handleGameComplete(xp, gold, 'classifier')}
+        />
+      )}
 
       <PennyAssistant
         scene="loan"
