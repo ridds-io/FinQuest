@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 
 export type PennyAssistantProps = {
-  scene: 'world' | 'budgeting';
+  scene: 'world' | 'budgeting' | 'loan';
   isOpen: boolean;
   onClose: () => void;
 };
@@ -21,6 +21,12 @@ const DIALOGUES = {
     "Manage income and expenses",
     "Spend smart, save wisely",
     "Try not to go broke 😭"
+  ],
+  loan: [
+    "Welcome to Loan City 🏦💸",
+    "Loans can be powerful tools if used right!",
+    "Learn about interest rates, EMIs, and credit scores",
+    "Remember: Only borrow what you can repay! 📉"
   ]
 };
 
