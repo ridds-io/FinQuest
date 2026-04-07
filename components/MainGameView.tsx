@@ -643,8 +643,8 @@ export default function MainGameView() {
             <div
               className="absolute cursor-pointer rounded border border-transparent hover:border-yellow-400/20 hover:bg-yellow-400/10 transition-all duration-200 mix-blend-screen"
               style={{ left: '69%', top: '64%', width: '13.5%', height: '5%' }}
-              onClick={() => showToast('🔒 Complete Budgeting City to unlock Loan Bank!')}
-              title="Loan Bank (Locked)"
+              onClick={() => router.push('/game/loan_city')}
+              title="Loan Bank"
             />
           </div>
 
