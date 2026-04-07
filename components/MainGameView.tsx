@@ -13,6 +13,7 @@ import {
   applyQuestSteps,
   type SidebarEntry,
 } from '@/components/QuestSidebar';
+import { PennyAssistant } from '@/components/PennyAssistant';
 
 const BudgetTetris = dynamic(
   () => import('@/components/BudgetTetris').then((m) => m.BudgetTetris),
@@ -188,10 +189,20 @@ export default function MainGameView() {
   const [tutorInput, setTutorInput] = useState('');
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorTips, setTutorTips] = useState<string[]>([]);
+  const [pennyOpen, setPennyOpen] = useState(false);
   const hotbarActive = useRef(0);
 
   useEffect(() => { saveState(state); }, [state]);
   useEffect(() => { saveQuestSteps(sidebarEntries); }, [sidebarEntries]);
+
+  useEffect(() => {
+    if (screen === 'game') {
+      const seen = localStorage.getItem('finquest_penny_seen_world') === 'true';
+      if (!seen) {
+        setTimeout(() => setPennyOpen(true), 1500);
+      }
+    }
+  }, [screen]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -726,6 +737,12 @@ export default function MainGameView() {
           </div>
         </main>
       </div>
+
+      <PennyAssistant
+        scene="world"
+        isOpen={pennyOpen}
+        onClose={() => setPennyOpen(false)}
+      />
 
       {/* Modal: Budgeting City */}
       {modal === 'budgeting-city' && (
