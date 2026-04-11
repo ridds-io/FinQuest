@@ -17,12 +17,13 @@ export async function POST(request: Request) {
       gameState: GameState;
       history?: Message[];
       mode?: 'tutor' | 'dilemma_feedback';
+      domain?: 'budgeting' | 'loans';
     };
-    const { query, gameState, history = [], mode = 'tutor' } = body;
+    const { query, gameState, history = [], mode = 'tutor', domain = 'budgeting' } = body;
     if (!query) {
       return NextResponse.json({ error: 'query required' }, { status: 400 });
     }
-    const question = await queryRAG(query, gameState ?? { gold: 15000, level: 1 }, history, mode);
+    const question = await queryRAG(query, gameState ?? { gold: 15000, level: 1 }, history, mode, domain);
     return NextResponse.json({ question });
   } catch (e) {
     console.error('rag-query error:', e);
