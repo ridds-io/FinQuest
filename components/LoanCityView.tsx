@@ -7,6 +7,7 @@ import {
   QuestSidebar,
   QUEST_DEFINITIONS,
   INITIAL_TIPS,
+  makeTutorEntry,
   loadQuestSteps,
   saveQuestSteps,
   applyQuestSteps,
@@ -46,6 +47,13 @@ export default function LoanCityView() {
   const [toast, setToast] = useState('');
   const [activeGame, setActiveGame] = useState<ActiveGame>(null);
   const [pennyOpen, setPennyOpen] = useState(false);
+  const [tutorOpen, setTutorOpen] = useState(false);
+  const [tutorMessages, setTutorMessages] = useState<Array<{ role: string; content: string }>>([
+    { role: 'ai', content: "Namaste! I'm Penny. Loan City can be tricky—many students fall into debt traps here. Want to discuss how to use loans to actually build your future?" },
+  ]);
+  const [tutorInput, setTutorInput] = useState('');
+  const [tutorLoading, setTutorLoading] = useState(false);
+  const [tutorTips, setTutorTips] = useState<string[]>([]);
 
   const persist = useCallback(() => {
     saveState(state);
@@ -68,6 +76,46 @@ export default function LoanCityView() {
     setToast(msg);
     setTimeout(() => setToast(''), 2500);
   }, []);
+
+  const addTutorToSidebar = useCallback((text: string) => {
+    setSidebarEntries((prev) => [...prev, makeTutorEntry(text)]);
+  }, []);
+
+  const extractTip = useCallback((text: string): string => {
+    const first = text.split(/[.!?]/).map((s) => s.trim()).filter(Boolean)[0] ?? text.trim();
+    return first.length > 90 ? first.slice(0, 87) + '...' : first;
+  }, []);
+
+  const sendTutor = useCallback(async (prefill?: string) => {
+    setTutorOpen(true);
+    const msg = (prefill ?? tutorInput).trim();
+    if (!msg || tutorLoading) return;
+    setTutorInput('');
+    setTutorMessages((m) => [...m, { role: 'user', content: msg }]);
+    setTutorLoading(true);
+    try {
+      const res = await fetch('/api/rag-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: msg,
+          gameState: state,
+          mode: 'tutor',
+          domain: 'loans',
+          history: tutorMessages.slice(-6).map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content })),
+        }),
+      });
+      const data = await res.json();
+      const reply: string = data.question || "I'm having trouble connecting to the financial grid. Try again?";
+      setTutorMessages((m) => [...m, { role: 'ai', content: reply }]);
+      addTutorToSidebar(reply);
+      const tip = extractTip(reply);
+      if (tip) setTutorTips((prev) => [...prev.slice(-9), tip]);
+    } catch {
+      setTutorMessages((m) => [...m, { role: 'ai', content: "Lost the connection! What do you think is the best way to handle this loan?" }]);
+    }
+    setTutorLoading(false);
+  }, [tutorInput, tutorLoading, tutorMessages, state, addTutorToSidebar, extractTip]);
 
   const handleGameComplete = useCallback(
     (xp: number, gold: number, gameKey: ActiveGame) => {
@@ -133,9 +181,9 @@ export default function LoanCityView() {
       <div className="flex-1 flex min-h-0">
         <QuestSidebar
           entries={sidebarEntries}
-          tutorTips={[]}
-          questsDone={0}
-          onAskTutor={() => {}}
+          tutorTips={tutorTips}
+          questsDone={sidebarEntries.filter((e) => e.kind === 'quest' && e.steps.every((s) => s.done)).length}
+          onAskTutor={(q) => sendTutor(q)}
         />
         <main className="flex-1 relative min-h-[500px] bg-[#1a1a2e] overflow-hidden">
           <div className="relative w-full h-full">
@@ -207,7 +255,7 @@ export default function LoanCityView() {
 
             <div className="absolute top-28 right-4 z-20 pointer-events-none">
               <button
-                onClick={() => setPennyOpen(true)}
+                onClick={() => setTutorOpen(true)}
                 className="border-4 border-[#1a1a1a] bg-[rgba(10,10,10,0.85)] px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 pointer-events-auto hover:shadow-none hover:translate-y-[4px] transition-all"
               >
                 <span>🐱</span>
@@ -253,6 +301,60 @@ export default function LoanCityView() {
         isOpen={pennyOpen}
         onClose={() => setPennyOpen(false)}
       />
+
+      {tutorOpen && (
+        <div className="fixed right-0 top-0 bottom-0 w-full sm:w-96 bg-[rgba(5,15,35,0.97)] border-l-2 border-blue-500/50 z-[300] flex flex-col shadow-2xl">
+          <div className="flex justify-between items-center p-4 border-b border-blue-500/30">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-[#0a1a2e] border border-gold/40 rounded-full overflow-hidden flex items-center justify-center">
+                <img
+                  src="/cat.png"
+                  alt="Penny"
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              </div>
+              <div>
+                <div className="font-pixel text-[var(--blue-light)] text-xs">Penny</div>
+                <div className="text-xs text-[var(--text-muted)]">Loan Specialist · AI Guide</div>
+              </div>
+            </div>
+            <button onClick={() => setTutorOpen(false)} className="text-[var(--text-muted)] hover:text-red-500 text-xl">✕</button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {tutorMessages.map((m, i) => (
+              <div key={i} className={`p-3 rounded text-sm ${m.role === 'user' ? 'bg-green/10 border border-green/20 ml-6' : 'bg-blue-500/15 border border-blue-500/25'}`}>
+                <div className="font-pixel text-xs mb-1 opacity-70">{m.role === 'user' ? 'You' : 'AI Tutor'}</div>
+                {m.content}
+              </div>
+            ))}
+          </div>
+          <div className="p-4 border-t border-blue-500/30">
+            <div className="flex gap-2 mb-2 flex-wrap">
+              {['What is a CIBIL score?', 'Education vs Personal loan', 'EMI for ₹15k income', 'Avoid debt traps'].map((q) => (
+                <button key={q} onClick={() => sendTutor(q)} className="font-pixel text-[10px] bg-blue-500/15 text-[var(--blue-light)] border border-blue-500/35 px-2 py-1 rounded">{q}</button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tutorInput}
+                onChange={(e) => setTutorInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendTutor()}
+                placeholder="Ask about loans & credit..."
+                className="flex-1 bg-white/10 border border-white/20 text-[var(--text)] px-3 py-2 rounded text-sm outline-none focus:border-[var(--blue-light)]"
+              />
+              <button
+                onClick={() => sendTutor()}
+                disabled={tutorLoading}
+                className="font-pixel text-xs bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+              >
+                {tutorLoading ? '…' : 'SEND →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 font-pixel text-xs bg-[var(--panel)] border border-[var(--panel-border)] text-gold px-6 py-3 rounded z-[500] animate-in fade-in duration-300">
